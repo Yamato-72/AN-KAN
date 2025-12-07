@@ -1,0 +1,11 @@
+{
+  "/[secretPath]/dashboard/[userId]/page": "app/[secretPath]/dashboard/[userId]/page.js",
+  "/[secretPath]/projects/[id]/page": "app/[secretPath]/projects/[id]/page.js",
+  "/[secretPath]/page": "app/[secretPath]/page.js",
+  "/api/staff/route": "app/api/staff/route.js",
+  "/api/projects/route": "app/api/projects/route.js",
+  "/[secretPath]/all-project/page": "app/[secretPath]/all-project/page.js",
+  "/[secretPath]/clients/page": "app/[secretPath]/clients/page.js",
+  "/[secretPath]/contractors/page": "app/[secretPath]/contractors/page.js",
+  "/api/projects/[id]/route": "app/api/projects/[id]/route.js"
+}
