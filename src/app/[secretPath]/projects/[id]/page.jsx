@@ -50,6 +50,64 @@ export default function ProjectDetailPage({ params }) {
     window.history.back();
   };
 
+ // ✅ 失注トグル（解除もできるように修正）
+const handleToggleLost = async () => {
+  if (!project) return;
+
+  const message = project.lost_flag
+    ? "この案件の『失注』を解除します。よろしいですか？"
+    : "この案件を『失注』にします。よろしいですか？";
+
+  if (!confirm(message)) return;
+
+  try {
+    const res = await fetch(`/api/projects/${project.id}/lost-hold`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "toggleLost" }),
+    });
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.error || "失注ステータスの更新に失敗しました");
+    }
+
+    await refetch(); // 最新のプロジェクト情報を取得
+  } catch (e) {
+    alert(e.message);
+  }
+};
+
+
+  // ✅ 保留トグル
+  const handleToggleHold = async () => {
+  if (!project) return;
+
+  const message = project.hold_flag
+    ? "この案件の『保留』を解除します。よろしいですか？"
+    : "この案件を『保留』にします。よろしいですか？";
+
+  if (!confirm(message)) return;
+
+  try {
+    const res = await fetch(`/api/projects/${project.id}/lost-hold`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "toggleHold" }),
+    });
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.error || "保留ステータスの更新に失敗しました");
+    }
+
+    await refetch();
+  } catch (e) {
+    alert(e.message);
+  }
+};
+
+
   // タブの定義
   const tabs = [
     { id: "overview", label: "概要", icon: "📊" },
@@ -98,18 +156,6 @@ export default function ProjectDetailPage({ params }) {
     (staff) => staff.code === project?.assigned_team_member,
   );
   const canPass = assignedStaff?.passer && project?.assigned_team_member;
-
-  // より確実なPass権限判定（デバッグ用）
-  // const debugCanPass = {
-  //   hasCurrentUser: !!null,
-  //   currentUserPasser: null,
-  //   currentUserCode: null,
-  //   projectAssignedMember: project?.assigned_team_member,
-  //   assignedStaff: assignedStaff,
-  //   assignedStaffPasser: assignedStaff?.passer,
-  //   codeMatch: null,
-  //   finalCanPass: canPass,
-  // };
 
   // GFIモードの場合の簡略表示は変更なし
   if (isGfiMode) {
@@ -185,7 +231,7 @@ export default function ProjectDetailPage({ params }) {
     <div className="min-h-screen bg-gray-50 pb-24">
       <DashboardHeader showStaffInfo={false} onBackClick={handleBack} />
 
-      {/* デバッグ情報表示 - 既存のデバッグコードは変更なし */}
+      {/* デバッグ情報表示（必要なら見られる） */}
       {isDebugMode && (
         <div className="bg-yellow-100 border border-yellow-400 text-yellow-800 px-4 py-3 mx-4 mt-4 rounded">
           <h3 className="font-bold">デバッグ情報</h3>
@@ -208,10 +254,6 @@ export default function ProjectDetailPage({ params }) {
               </p>
             </div>
           </div>
-          <p className="mt-2">
-            判定ロジック: プロジェクトの担当者({assignedStaff?.name}
-            )がPasser権限を持っているか
-          </p>
         </div>
       )}
 
@@ -263,6 +305,10 @@ export default function ProjectDetailPage({ params }) {
                 canPass={canPass}
                 onEdit={() => setShowEditModal(true)}
                 onPass={() => setShowPassModal(true)}
+                onLost={handleToggleLost}
+                onHold={handleToggleHold}
+                isLost={project.lost_flag}
+                isHold={project.hold_flag}
               />
             </div>
           </div>
@@ -322,5 +368,3 @@ export default function ProjectDetailPage({ params }) {
     </div>
   );
 }
-
-

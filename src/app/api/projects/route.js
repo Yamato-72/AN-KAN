@@ -8,14 +8,17 @@ export async function GET(request) {
     const search = searchParams.get("search");
     const assigned_team_member = searchParams.get("assigned_team_member");
     const gfi = searchParams.get("gfi");
+    // 🔹 追加：フォルダ（active / lost / hold）
+    const folder = searchParams.get("folder") || "active";
 
     console.log("=== Projects API Debug ===");
     console.log("gfi parameter:", gfi);
     console.log("status parameter:", status);
     console.log("assigned_team_member parameter:", assigned_team_member);
+    console.log("folder parameter:", folder);
 
-    let whereConditions = [];
-    let parameters = [];
+    const whereConditions = [];
+    const parameters = [];
 
     // Status filter
     if (status && status !== "all") {
@@ -40,6 +43,24 @@ export async function GET(request) {
     } else if (gfi === "false") {
       whereConditions.push(`p.gfi = false`);
       console.log("Added GFI filter: p.gfi = false");
+    }
+
+    // 🔹 フォルダ（進行中 / 失注 / 保留）フィルタ
+    if (folder === "lost") {
+      // 失注フォルダ
+      whereConditions.push(`p.lost_flag = true`);
+      whereConditions.push(`p.hold_flag = false`);
+      console.log("Added folder filter: lost");
+    } else if (folder === "hold") {
+      // 保留フォルダ
+      whereConditions.push(`p.hold_flag = true`);
+      whereConditions.push(`p.lost_flag = false`);
+      console.log("Added folder filter: hold");
+    } else {
+      // デフォルト（active）→ 失注でも保留でもない案件
+      whereConditions.push(`p.lost_flag = false`);
+      whereConditions.push(`p.hold_flag = false`);
+      console.log("Added folder filter: active (default)");
     }
 
     // Search filter

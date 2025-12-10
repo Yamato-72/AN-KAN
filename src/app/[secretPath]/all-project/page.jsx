@@ -25,21 +25,25 @@ export default function AllProjectsPage() {
 
   // Fetch all projects
   const fetchProjects = async () => {
-    try {
-      setIsLoading(true);
-      const response = await fetch("/api/projects");
-      if (!response.ok) {
-        throw new Error(`プロジェクトの取得に失敗しました: ${response.status}`);
-      }
-      const data = await response.json();
-      setProjects(data);
-    } catch (error) {
-      console.error("Error fetching projects:", error);
-      setError(error.message);
-    } finally {
-      setIsLoading(false);
+  try {
+    setIsLoading(true);
+
+    // 🔹 進行中（通常）の案件だけ取得する
+    const response = await fetch("/api/projects?folder=active");
+
+    if (!response.ok) {
+      throw new Error(`プロジェクトの取得に失敗しました: ${response.status}`);
     }
-  };
+    const data = await response.json();
+    setProjects(data);
+  } catch (error) {
+    console.error("Error fetching projects:", error);
+    setError(error.message);
+  } finally {
+    setIsLoading(false);
+  }
+};
+
 
   // Handle project deletion
   const handleDeleteProject = (projectId) => {
