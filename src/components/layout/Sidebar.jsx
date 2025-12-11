@@ -42,6 +42,18 @@ export const Sidebar = () => {
       title: "失注・保留",
     },
     {
+      icon: BarChart3,
+      href: (() => {
+        const path = pathname || "";
+        const segments = path.split("/").filter(Boolean);
+        const secret = segments[0];      // 例: "abc123"（secretPath）
+        const id = segments[2];          // 例: "B"（userId）
+        return createSecretUrl(`/analysis/${id || ""}`);
+      })(),
+      isActive: pathname.includes("/analysis/"),
+      title: "分析",
+    },
+    {
       icon: Building,
       href: createSecretUrl("/clients"),
       isActive: pathname.startsWith(createSecretUrl("/clients")),
@@ -52,12 +64,6 @@ export const Sidebar = () => {
       href: createSecretUrl("/contractors"),
       isActive: pathname.startsWith(createSecretUrl("/contractors")),
       title: "設置業者",
-    },
-    {
-      icon: BarChart3,
-      href: "/gfi",
-      isActive: pathname.startsWith("/gfi"),
-      title: "GFI",
     },
   ];
 
