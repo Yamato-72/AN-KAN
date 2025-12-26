@@ -38,7 +38,7 @@ export function StaffSelector() {
           ? [
               {
                 id: "kamimura",
-                name: "上村宏美",
+                name: "全件管理者",
                 code: null,
                 email: null,
                 active: true,

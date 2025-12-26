@@ -1,3 +1,6 @@
+// src/hooks/useGfiStats.js
+"use client";
+
 import { useQuery } from "@tanstack/react-query";
 
 export function useGfiStats() {
@@ -10,10 +13,7 @@ export function useGfiStats() {
       }
       return response.json();
     },
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 5 * 60 * 1000, // 5分
     refetchOnWindowFocus: true,
   });
 }
-
-
-
