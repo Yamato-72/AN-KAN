@@ -38,9 +38,7 @@ export const ProjectList = ({
         gfi: !project.gfi,
       });
 
-      if (result?.message) {
-        toast.success(result.message);
-      }
+      if (result?.message) toast.success(result.message);
     } catch (error) {
       toast.error(error.message || "GFIフラグの更新に失敗しました");
     }
@@ -56,9 +54,7 @@ export const ProjectList = ({
         trouble_flag: !project.trouble_flag,
       });
 
-      if (result?.message) {
-        toast.success(result.message);
-      }
+      if (result?.message) toast.success(result.message);
     } catch (error) {
       toast.error(error.message || "トラブルフラグの更新に失敗しました");
     }
@@ -73,13 +69,10 @@ export const ProjectList = ({
         method: "DELETE",
       });
 
-      if (!response.ok) {
-        throw new Error("プロジェクトの削除に失敗しました");
-      }
+      if (!response.ok) throw new Error("プロジェクトの削除に失敗しました");
 
-      if (onDelete) {
-        onDelete(selectedProject.id);
-      }
+      if (onDelete) onDelete(selectedProject.id);
+
       setShowDeleteModal(false);
       setSelectedProject(null);
     } catch (error) {
@@ -91,7 +84,9 @@ export const ProjectList = ({
   };
 
   const handleProjectClick = (projectId) => {
-    window.location.href = `/x7k9m3n8q2v5w1z4p6j9r8y3e2u7i5o1a9s8d6f3g7h2j4k8l3m9n6q2w5e8r1t7y4u2i9o6p3/projects/${projectId}${isGfiMode ? "?gfi=true" : ""}`;
+    window.location.href = `/x7k9m3n8q2v5w1z4p6j9r8y3e2u7i5o1a9s8d6f3g7h2j4k8l3m9n6q2w5e8r1t7y4u2i9o6p3/projects/${projectId}${
+      isGfiMode ? "?gfi=true" : ""
+    }`;
   };
 
   const formatCurrency = (amount) => {
@@ -120,7 +115,7 @@ export const ProjectList = ({
     );
   }
 
-  if (projects.length === 0) {
+  if (!projects || projects.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-gray-500">プロジェクトが見つかりません</div>
@@ -128,10 +123,12 @@ export const ProjectList = ({
     );
   }
 
-  // 重複防止: idでユニークにする
-  const uniqueProjects = projects.filter(
-    (project, index, self) =>
-      index === self.findIndex((p) => p.id === project.id),
+  /**
+   * ✅ 並び順を壊さずに重複だけ除外する（Map方式）
+   * 親（DashboardPage）でソートした順番を維持したまま、id重複だけ消せる
+   */
+  const uniqueProjects = Array.from(
+    new Map(projects.map((p) => [p.id, p])).values()
   );
 
   return (
@@ -171,10 +168,11 @@ export const ProjectList = ({
                   </th>
                 </tr>
               </thead>
+
               <tbody className="bg-white divide-y divide-gray-200">
                 {uniqueProjects.map((project) => (
                   <tr
-                    key={`project-${project.id}`}
+                    key={project.id} // ✅ 安定キー
                     className={`hover:bg-gray-50 cursor-pointer transition-colors ${
                       project.trouble_flag ? "bg-yellow-50" : ""
                     }`}
@@ -192,16 +190,19 @@ export const ProjectList = ({
                         )}
                       </div>
                     </td>
+
                     <td className="px-6 py-4 text-sm text-gray-900">
                       <div className="max-w-xs truncate font-medium">
                         {project.project_name || "無題"}
                       </div>
                     </td>
+
                     <td className="px-6 py-4 text-sm text-gray-600">
                       <div className="max-w-xs truncate">
                         {project.client_name || "-"}
                       </div>
                     </td>
+
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                       <div className="flex items-center gap-1">
                         <User className="h-3 w-3 text-gray-400" />
@@ -215,24 +216,29 @@ export const ProjectList = ({
                         </span>
                       </div>
                     </td>
+
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span
                         className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(
-                          project.status,
+                          project.status
                         )}`}
                       >
                         {getStatusText(project.status)}
                       </span>
                     </td>
+
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                       {formatCurrency(project.estimated_amount)}
                     </td>
+
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                       {formatDate(project.delivery_date)}
                     </td>
+
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                       {formatDate(project.inquiry_date)}
                     </td>
+
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex items-center justify-end gap-1">
                         {/* トラブルフラグボタン */}
@@ -256,9 +262,7 @@ export const ProjectList = ({
                         >
                           <AlertTriangle
                             size={14}
-                            fill={
-                              project.trouble_flag ? "currentColor" : "none"
-                            }
+                            fill={project.trouble_flag ? "currentColor" : "none"}
                           />
                         </button>
 
@@ -277,9 +281,7 @@ export const ProjectList = ({
                                 : ""
                             }`}
                             title={
-                              project.gfi
-                                ? "GFIフラグを解除"
-                                : "GFIフラグを設定"
+                              project.gfi ? "GFIフラグを解除" : "GFIフラグを設定"
                             }
                           >
                             <Flag
@@ -344,6 +346,7 @@ export const ProjectList = ({
               >
                 キャンセル
               </button>
+
               <button
                 onClick={handleDeleteProject}
                 disabled={deleting}
@@ -361,6 +364,3 @@ export const ProjectList = ({
     </>
   );
 };
-
-
-

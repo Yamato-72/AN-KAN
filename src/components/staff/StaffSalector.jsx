@@ -32,7 +32,7 @@ export function StaffSelector() {
       const validStaff = Array.isArray(data) ? data : [];
       console.log("Valid staff after filtering:", validStaff); // デバッグ用ログ
 
-      // 上村宏美を仮想的な担当者として追加（DBにデータがある場合のみ全プロジェクト管理を表示）
+      // 全件管理者を仮想的な担当者として追加（DBにデータがある場合のみ全プロジェクト管理を表示）
       const finalStaffList =
         validStaff.length > 0
           ? [
@@ -135,7 +135,7 @@ export function StaffSelector() {
 
           <div className="divide-y divide-gray-200">
             {staff.map((member) => {
-              // 上村宏美の場合はall-projectページへ、それ以外は個別ダッシュボードへ
+              // 全件管理者の場合はall-projectページへ、それ以外は個別ダッシュボードへ
               const targetUrl = member.isVirtual
                 ? `/${SECRET_PATH}/all-project`
                 : `/${SECRET_PATH}/dashboard/${member.code}`;

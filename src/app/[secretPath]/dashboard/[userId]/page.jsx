@@ -22,6 +22,8 @@ export default function DashboardPage({ params }) {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [showMobileSearch, setShowMobileSearch] = useState(false);
   const [currentStaff, setCurrentStaff] = useState(null);
+  const [sortKey, setSortKey] = useState("updated_at"); // default: 更新日
+  const [sortOrder, setSortOrder] = useState("desc");   // default: 新しい順
 
   // URLパラメータからuserIdを取得し、スタッフ情報を設定
   useEffect(() => {
@@ -60,39 +62,59 @@ export default function DashboardPage({ params }) {
     currentStaff?.code,
   );
 
-  const filteredProjects = useMemo(() => {
-    if (!projects || projects.length === 0) {
-      return [];
+ const filteredProjects = useMemo(() => {
+  if (!projects || projects.length === 0) return [];
+
+  // ===== フィルタ + 検索 =====
+  const filtered = projects.filter((project) => {
+    let matchesFilter = false;
+
+    if (selectedFilter === "trouble") {
+      matchesFilter = project.trouble_flag === true;
+    } else if (selectedFilter === "in-progress") {
+      matchesFilter = project.status !== "残金請求済";
+    } else if (selectedFilter === "残金請求済") {
+      matchesFilter = project.status === "残金請求済";
+    } else {
+      matchesFilter = project.status === selectedFilter;
     }
 
-    const filtered = projects.filter((project) => {
-      let matchesFilter = false;
+    const q = searchQuery.toLowerCase();
+    const matchesSearch =
+      (project.project_name || "").toLowerCase().includes(q) ||
+      (project.client_name || "").toLowerCase().includes(q) ||
+      (project.location || "").toLowerCase().includes(q) ||
+      (project.ad_number != null && project.ad_number.toString().includes(searchQuery));
 
-      if (selectedFilter === "trouble") {
-        matchesFilter = project.trouble_flag === true;
-      } else if (selectedFilter === "in-progress") {
-        matchesFilter = project.status !== "残金請求済";
-      } else if (selectedFilter === "残金請求済") {
-        matchesFilter = project.status === "残金請求済";
-      } else {
-        matchesFilter = project.status === selectedFilter;
-      }
+    return matchesFilter && matchesSearch;
+  });
 
-      const matchesSearch =
-        (project.project_name || "")
-          .toLowerCase()
-          .includes(searchQuery.toLowerCase()) ||
-        project.client_name
-          ?.toLowerCase()
-          .includes(searchQuery.toLowerCase()) ||
-        project.location?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (project.ad_number &&
-          project.ad_number.toString().includes(searchQuery));
-      return matchesFilter && matchesSearch;
-    });
+  // ===== ソート（指定5種類だけ）=====
+  const toMs = (v) => {
+    if (!v) return null;
+    // "2025-08-19 00:00:00+00" も確実にパース
+    const s = String(v).trim().replace(" ", "T").replace(/\+00$/, "+00:00");
+    const t = Date.parse(s);
+    return Number.isFinite(t) ? t : null;
+  };
 
-    return filtered;
-  }, [projects, selectedFilter, searchQuery]);
+  const dir = sortOrder === "desc" ? -1 : 1;
+
+  const sorted = [...filtered].sort((a, b) => {
+    const aMs = toMs(a?.[sortKey]);
+    const bMs = toMs(b?.[sortKey]);
+
+    // 未入力は最後へ
+    if (aMs == null && bMs == null) return 0;
+    if (aMs == null) return 1;
+    if (bMs == null) return -1;
+
+    return (aMs - bMs) * dir;
+  });
+
+  return sorted;
+}, [projects, selectedFilter, searchQuery, sortKey, sortOrder]);
+
 
   return (
     <div className="min-h-screen bg-gray-50 font-inter">
@@ -125,11 +147,37 @@ export default function DashboardPage({ params }) {
           onFilterChange={setSelectedFilter}
         />
 
-        <div className="px-4 lg:px-6 mb-4">
-          <div className="flex justify-end">
-            <ViewToggle viewMode={viewMode} onViewModeChange={setViewMode} />
-          </div>
+
+        <div className="flex justify-end items-center gap-2">
+          {/* 並べ替え */}
+          <select
+            className="border rounded px-3 py-1 text-sm bg-white"
+            value={sortKey}
+            onChange={(e) => setSortKey(e.target.value)}
+          >
+            <option value="updated_at">更新日</option>
+            <option value="created_at">作成日</option>
+            <option value="inquiry_date">問い合わせ日</option>
+            <option value="delivery_date">納品日</option>
+            <option value="installation_date">設置日</option>
+          </select>
+
+          {/* 昇順/降順 */}
+          <button
+            type="button"
+            className="border rounded px-2 py-1 text-sm bg-white"
+            title="並び順切替"
+            onClick={() =>
+              setSortOrder((prev) => (prev === "desc" ? "asc" : "desc"))
+            }
+          >
+            {sortOrder === "desc" ? "▼" : "▲"}
+          </button>
+
+          {/* 表示切替 */}
+          <ViewToggle viewMode={viewMode} onViewModeChange={setViewMode} />
         </div>
+
 
         {viewMode === "grid" ? (
           <ProjectGrid
