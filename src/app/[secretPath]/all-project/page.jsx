@@ -60,76 +60,75 @@ export default function AllProjectsPage() {
   }, []);
 
   const filteredProjects = useMemo(() => {
-    if (!projects || projects.length === 0) return [];
+  if (!projects || projects.length === 0) return [];
 
-    const filtered = projects.filter((project) => {
-      let matchesFilter = false;
+  const filtered = projects.filter((project) => {
+    let matchesFilter = false;
 
-      // ✅ "all" は全件通す
-      if (selectedFilter === "all") {
-        matchesFilter = true;
-      } else if (selectedFilter === "trouble") {
-        matchesFilter = project.trouble_flag === true;
-      } else if (selectedFilter === "in-progress") {
-        matchesFilter = project.status !== "残金請求済";
-      } else if (selectedFilter === "残金請求済") {
-        matchesFilter = project.status === "残金請求済";
-      } else {
-        matchesFilter = project.status === selectedFilter;
-      }
+    if (selectedFilter === "all") {
+      matchesFilter = true;
+    } else if (selectedFilter === "trouble") {
+      matchesFilter = project.trouble_flag === true;
+    } else if (selectedFilter === "in-progress") {
+      matchesFilter = project.status !== "残金請求済";
+    } else if (selectedFilter === "残金請求済") {
+      matchesFilter = project.status === "残金請求済";
+    } else {
+      matchesFilter = project.status === selectedFilter;
+    }
 
-      const q = searchQuery.toLowerCase();
+    const q = searchQuery.toLowerCase();
 
-      const matchesSearch =
-        (project.project_name || "").toLowerCase().includes(q) ||
-        (project.client_name || "").toLowerCase().includes(q) ||
-        (project.location || "").toLowerCase().includes(q) ||
-        (project.ad_number != null &&
-          project.ad_number.toString().includes(searchQuery));
+    const matchesSearch =
+      (project.project_name || "").toLowerCase().includes(q) ||
+      (project.client_name || "").toLowerCase().includes(q) ||
+      (project.location || "").toLowerCase().includes(q) ||
+      (project.ad_number != null &&
+        project.ad_number.toString().includes(searchQuery));
 
-      return matchesFilter && matchesSearch;
-    });
+    return matchesFilter && matchesSearch;
+  });
 
-    // ===== sort（キー名のズレ吸収）=====
-    const keyMap = {
-      updated_at: ["updated_at", "updatedAt"],
-      created_at: ["created_at", "createdAt"],
-      inquiry_date: ["inquiry_date", "inquiryDate"],
-      delivery_date: ["delivery_date", "deliveryDate"],
-      installation_date: ["installation_date", "installationDate"],
-    };
+  const keyMap = {
+    updated_at: ["updated_at", "updatedAt"],
+    created_at: ["created_at", "createdAt"],
+    inquiry_date: ["inquiry_date", "inquiryDate"],
+    delivery_date: ["delivery_date", "deliveryDate"],
+    installation_date: ["installation_date", "installationDate"],
+  };
 
-    const pick = (obj, key) => {
-      const keys = keyMap[key] || [key];
-      for (const k of keys) {
-        const v = obj?.[k];
-        if (v != null && v !== "") return v;
-      }
-      return null;
-    };
+  const pick = (obj, key) => {
+    const keys = keyMap[key] || [key];
+    for (const k of keys) {
+      const v = obj?.[k];
+      if (v != null && v !== "") return v;
+    }
+    return null;
+  };
 
-    // ✅ "2025-08-19 00:00:00+00" 形式も確実にパース
-    const toMs = (v) => {
-      if (!v) return null;
-      const s = String(v).trim().replace(" ", "T").replace(/\+00$/, "+00:00");
-      const t = Date.parse(s);
-      return Number.isFinite(t) ? t : null;
-    };
+  const toMs = (v) => {
+    if (!v) return null;
+    const s = String(v).replace(" ", "T").replace(/\+00$/, "+00:00");
+    const t = Date.parse(s);
+    return Number.isFinite(t) ? t : null;
+  };
 
-    const dir = sortOrder === "desc" ? -1 : 1;
+  const dir = sortOrder === "desc" ? -1 : 1;
 
-    return [...filtered].sort((a, b) => {
-      const aMs = toMs(pick(a, sortKey));
-      const bMs = toMs(pick(b, sortKey));
+  const sorted = [...filtered].sort((a, b) => {
+    const aMs = toMs(pick(a, sortKey));
+    const bMs = toMs(pick(b, sortKey));
 
-      // 未入力は最後
-      if (aMs == null && bMs == null) return 0;
-      if (aMs == null) return 1;
-      if (bMs == null) return -1;
+    if (aMs == null && bMs == null) return 0;
+    if (aMs == null) return 1;
+    if (bMs == null) return -1;
 
-      return (aMs - bMs) * dir;
-    });
-  }, [projects, selectedFilter, searchQuery, sortKey, sortOrder]);
+    return (aMs - bMs) * dir;
+  });
+
+  return sorted; // ← ★ これが無いと絶対に反映されない
+}, [projects, selectedFilter, searchQuery, sortKey, sortOrder]);
+
 
   return (
     <div className="min-h-screen bg-gray-50 font-inter">
@@ -185,8 +184,6 @@ export default function AllProjectsPage() {
             </div>
           </div>
         </div>
-
-        console.log(filteredProjects.slice(0,5).map(p=>p.updated_at))
 
         <ProjectFilterBar selectedFilter={selectedFilter} onFilterSelect={setSelectedFilter} />
 
