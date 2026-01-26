@@ -82,6 +82,7 @@ export async function PUT(request, { params }) {
       delivery_date,
       installation_date,
       installation_contractor,
+      installation_contractor2,
       remarks,
       product_number, // 製品番号を追加
       address,
@@ -242,6 +243,11 @@ export async function PUT(request, { params }) {
       paramCount++;
       updates.push(`installation_contractor = $${paramCount}`);
       values.push(installation_contractor);
+    }
+    if (installation_contractor2 !== undefined) {
+      paramCount++;
+      updates.push(`installation_contractor2 = $${paramCount}`);
+      values.push(installation_contractor2);
     }
     if (remarks !== undefined) {
       paramCount++;
@@ -452,6 +458,21 @@ export async function PUT(request, { params }) {
         VALUES (${id}, 'contractor_update', ${`設置業者が「${oldContractor}」から「${newContractor}」に変更されました`})
       `;
     }
+
+    // Installation contractor2 change log
+if (
+  installation_contractor2 !== undefined &&
+  installation_contractor2 !== oldProject.installation_contractor2
+) {
+  const oldContractor2 = oldProject.installation_contractor2 || "未設定";
+  const newContractor2 = installation_contractor2 || "未設定";
+
+  await sql`
+    INSERT INTO project_activities (project_id, activity_type, description)
+    VALUES (${id}, 'contractor2_update', ${`設置業者②が「${oldContractor2}」から「${newContractor2}」に変更されました`})
+  `;
+}
+
 
     // Project name change log
     if (

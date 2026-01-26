@@ -149,6 +149,7 @@ export async function POST(request) {
       product_number,
       installation_date,
       installation_contractor,
+      installation_contractor2,
       delivery_date,
       assigned_team_member,
       company_address,
@@ -279,6 +280,7 @@ export async function POST(request) {
         product_number,
         installation_date,
         installation_contractor,
+        installation_contractor2,
         delivery_date,
         assigned_team_member,
         address,
@@ -289,7 +291,7 @@ export async function POST(request) {
       ) VALUES (
         $1, $2, $3, $4, $5,
         $6, $7, $8, $9, $10,
-        $11, $12, $13, NOW(), NOW()
+        $11, $12, $13, $14, NOW(), NOW()
       )
       RETURNING *
       `,
@@ -302,6 +304,7 @@ export async function POST(request) {
         product_number || null,
         installation_date || null,
         installation_contractor || null,
+        installation_contractor2 || null,
         delivery_date || null,
         assignedCode,
         address || null,

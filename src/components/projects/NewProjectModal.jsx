@@ -19,6 +19,7 @@ const INITIAL_FORM_DATA = {
   product_number: "", // 製品番号を追加
   installation_date: "",
   installation_contractor: "",
+  nstallation_contractor2: "",
   delivery_date: "", // 初期値を空に変更
   assigned_team_member: null, // 担当者ID
   estimated_amount: "", // 見積額
@@ -49,9 +50,10 @@ export const NewProjectModal = ({
 
   // 設置業者候補機能
   const [contractors, setContractors] = useState([]);
-  const [showContractorSuggestions, setShowContractorSuggestions] =
-    useState(false);
   const [filteredContractors, setFilteredContractors] = useState([]);
+  const [showContractorSuggestions, setShowContractorSuggestions] = useState(false);
+  const [activeContractorField, setActiveContractorField] = useState(null);
+  // ↑ "installation_contractor" or "installation_contractor2"
 
   // 編集モードかどうかを判定
   useEffect(() => {
@@ -104,21 +106,24 @@ export const NewProjectModal = ({
 
   // 設置業者入力時のフィルタリング
   useEffect(() => {
-    if (!formData.installation_contractor) {
-      setFilteredContractors([]);
-      setShowContractorSuggestions(false);
-      return;
-    }
+  if (!activeContractorField) return;
 
-    const query = formData.installation_contractor.toLowerCase();
-    const filtered = contractors.filter((contractor) =>
-      contractor.contractor_name.toLowerCase().includes(query),
-    );
-    setFilteredContractors(filtered);
-    setShowContractorSuggestions(
-      filtered.length > 0 && formData.installation_contractor !== "",
-    );
-  }, [formData.installation_contractor, contractors]);
+  const value = formData[activeContractorField];
+  if (!value) {
+    setFilteredContractors([]);
+    setShowContractorSuggestions(false);
+    return;
+  }
+
+  const query = value.toLowerCase();
+  const filtered = contractors.filter((c) =>
+    c.contractor_name.toLowerCase().includes(query)
+  );
+
+  setFilteredContractors(filtered);
+  setShowContractorSuggestions(filtered.length > 0);
+}, [formData, contractors, activeContractorField]);
+
 
   // 次のAD番号を取得する関数
   const fetchNextAdNumber = async () => {
@@ -278,12 +283,17 @@ export const NewProjectModal = ({
 
   // 設置業者選択時の処理
   const handleContractorSelect = (contractor) => {
-    setFormData((prev) => ({
-      ...prev,
-      installation_contractor: contractor.contractor_name,
-    }));
-    setShowContractorSuggestions(false);
-  };
+  if (!activeContractorField) return;
+
+  setFormData((prev) => ({
+    ...prev,
+    [activeContractorField]: contractor.contractor_name,
+  }));
+
+  setShowContractorSuggestions(false);
+  setActiveContractorField(null);
+};
+
 
   const handleClose = () => {
     onClose();
@@ -588,7 +598,7 @@ export const NewProjectModal = ({
 
             <div className="relative">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                設置業者
+                設置業者①
               </label>
               <input
                 type="text"
@@ -596,40 +606,57 @@ export const NewProjectModal = ({
                 onChange={(e) =>
                   handleInputChange("installation_contractor", e.target.value)
                 }
-                onFocus={() =>
-                  formData.installation_contractor &&
-                  setShowContractorSuggestions(filteredContractors.length > 0)
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                onFocus={() => setActiveContractorField("installation_contractor")}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
                 placeholder="設置業者名を入力"
               />
-              {showContractorSuggestions && filteredContractors.length > 0 && (
-                <div className="absolute top-full left-0 right-0 bg-white border border-gray-300 rounded-lg shadow-lg z-10 max-h-60 overflow-y-auto mt-1">
-                  {filteredContractors.map((contractor) => (
-                    <button
-                      key={contractor.id}
-                      type="button"
-                      onClick={() => handleContractorSelect(contractor)}
-                      className="w-full px-4 py-3 text-left hover:bg-gray-50 border-b border-gray-100 last:border-b-0"
-                    >
-                      <div className="font-medium text-gray-900">
-                        {contractor.contractor_name}
-                      </div>
-                      {contractor.contact_person && (
-                        <div className="text-sm text-gray-600">
-                          {contractor.contact_person}
-                        </div>
-                      )}
-                      {contractor.phone_number && (
-                        <div className="text-xs text-gray-500">
-                          {contractor.phone_number}
-                        </div>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              )}
             </div>
+
+            <div className="relative">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                設置業者②（任意）
+              </label>
+              <input
+                type="text"
+                value={formData.installation_contractor2}
+                onChange={(e) =>
+                  handleInputChange("installation_contractor2", e.target.value)
+                }
+                onFocus={() => setActiveContractorField("installation_contractor2")}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                placeholder="2社目がある場合"
+              />
+            </div>
+
+            {showContractorSuggestions && filteredContractors.length > 0 && (
+              <div className="absolute top-full left-0 right-0 bg-white border border-gray-300 rounded-lg shadow-lg z-10 max-h-60 overflow-y-auto mt-1">
+                {filteredContractors.map((contractor) => (
+                  <button
+                    key={contractor.id}
+                    type="button"
+                    onClick={() => handleContractorSelect(contractor)}
+                    className="w-full px-4 py-3 text-left hover:bg-gray-50 border-b border-gray-100 last:border-b-0"
+                  >
+                    <div className="font-medium text-gray-900">
+                      {contractor.contractor_name}
+                    </div>
+                    {contractor.contact_person && (
+                      <div className="text-sm text-gray-600">
+                        {contractor.contact_person}
+                      </div>
+                    )}
+                    {contractor.phone_number && (
+                      <div className="text-xs text-gray-500">
+                        {contractor.phone_number}
+                      </div>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+
+
+
           </div>
 
           <div>
