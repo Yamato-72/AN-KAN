@@ -109,6 +109,42 @@ export async function PUT(request, { params }) {
       }
     }
 
+
+    // ✅ 受注済み → 国際発注済 を「confirm:true」で確定するタイミングで oda-pay に upsert
+    if (
+      action === "next" &&
+      confirm === true &&
+      currentStatus === "受注済み" &&
+      newStatus === "国際発注済"
+    ) {
+      const odaPayUrl = process.env.ODA_PAY_URL;
+      if (!odaPayUrl) {
+        return Response.json({ error: "ODA_PAY_URL is not set" }, { status: 500 });
+      }
+
+      // projectsテーブルのカラム名に合わせて調整してね（ad_number or ad など）
+      const payload = {
+        project_id: project[0].id,
+        ad: project[0].ad_number ?? project[0].ad, // ←どっちか合う方
+        project_name: project[0].project_name,
+        client_name: project[0].client_name, // ←もしprojectsに無いなら後述
+      };
+
+      const resp = await fetch(`${odaPayUrl}/api/ankan/ordered-projects/upsert`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!resp.ok) {
+        const text = await resp.text();
+        return Response.json(
+          { error: `oda-pay upsert failed: ${resp.status} ${text}` },
+          { status: 502 },
+        );
+      }
+    }
+
     // データベース更新のクエリを構築
     let updateQuery;
 
@@ -299,24 +335,12 @@ async function checkStatusUpdateConditions(project, newStatus) {
     case "設置手配済":
       // 国際発注済みから設置手配済みに進む場合は設置情報の入力が必要
       if (project.status === "国際発注済") {
-        const resp = await fetch(
-        `${process.env.ODA_PAY_URL}/api/ankan/ordered-projects/upsert`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            project_id: project.id,
-            ad: project.ad,
-            project_name: project.project_name,
-            client_name: project.client_name,
-          }),
-        }
-      );
-
-      if (!resp.ok) {
-        const text = await resp.text();
-        throw new Error(`oda-pay upsert failed: ${resp.status} ${text}`);
-      }
+        return {
+          allowed: true,
+          requiresInstallationInfo: true,
+          currentInstallationContractor: project.installation_contractor || "",
+          currentInstallationDate: project.installation_date || "",
+        };
       }
       break;
     case "設置完了":
