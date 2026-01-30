@@ -299,12 +299,24 @@ async function checkStatusUpdateConditions(project, newStatus) {
     case "設置手配済":
       // 国際発注済みから設置手配済みに進む場合は設置情報の入力が必要
       if (project.status === "国際発注済") {
-        return {
-          allowed: true,
-          requiresInstallationInfo: true,
-          currentInstallationContractor: project.installation_contractor || "",
-          currentInstallationDate: project.installation_date || "",
-        };
+        const resp = await fetch(
+        `${process.env.ODA_PAY_URL}/api/ankan/ordered-projects/upsert`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            project_id: project.id,
+            ad: project.ad,
+            project_name: project.project_name,
+            client_name: project.client_name,
+          }),
+        }
+      );
+
+      if (!resp.ok) {
+        const text = await resp.text();
+        throw new Error(`oda-pay upsert failed: ${resp.status} ${text}`);
+      }
       }
       break;
     case "設置完了":
