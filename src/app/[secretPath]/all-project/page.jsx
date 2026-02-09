@@ -28,7 +28,7 @@ export default function AllProjectsPage() {
 
   // ✅ 並べ替え state（これが無いとソートが動かない）
   const [sortKey, setSortKey] = useState("updated_at"); // default: 更新日
-  const [sortOrder, setSortOrder] = useState("desc");   // default: 新しい順
+  const [sortOrder, setSortOrder] = useState("desc"); // default: 新しい順
 
   // Fetch all projects
   const fetchProjects = async () => {
@@ -60,75 +60,97 @@ export default function AllProjectsPage() {
   }, []);
 
   const filteredProjects = useMemo(() => {
-  if (!projects || projects.length === 0) return [];
+    if (!projects || projects.length === 0) return [];
 
-  const filtered = projects.filter((project) => {
-    let matchesFilter = false;
+    const filtered = projects.filter((project) => {
+      let matchesFilter = false;
 
-    if (selectedFilter === "all") {
-      matchesFilter = true;
-    } else if (selectedFilter === "trouble") {
-      matchesFilter = project.trouble_flag === true;
-    } else if (selectedFilter === "in-progress") {
-      matchesFilter = project.status !== "残金請求済";
-    } else if (selectedFilter === "残金請求済") {
-      matchesFilter = project.status === "残金請求済";
-    } else {
-      matchesFilter = project.status === selectedFilter;
-    }
+      if (selectedFilter === "all") {
+        matchesFilter = true;
+      } else if (selectedFilter === "trouble") {
+        matchesFilter = project.trouble_flag === true;
+      } else if (selectedFilter === "in-progress") {
+        matchesFilter = project.status !== "残金請求済";
+      } else if (selectedFilter === "残金請求済") {
+        matchesFilter = project.status === "残金請求済";
+      } else {
+        matchesFilter = project.status === selectedFilter;
+      }
 
-    const q = searchQuery.toLowerCase();
+      const q = searchQuery.toLowerCase();
 
-    const matchesSearch =
-      (project.project_name || "").toLowerCase().includes(q) ||
-      (project.client_name || "").toLowerCase().includes(q) ||
-      (project.location || "").toLowerCase().includes(q) ||
-      (project.ad_number != null &&
-        project.ad_number.toString().includes(searchQuery));
+      const matchesSearch =
+        (project.project_name || "").toLowerCase().includes(q) ||
+        (project.client_name || "").toLowerCase().includes(q) ||
+        (project.location || "").toLowerCase().includes(q) ||
+        (project.ad_number != null &&
+          project.ad_number.toString().includes(searchQuery));
 
-    return matchesFilter && matchesSearch;
-  });
+      return matchesFilter && matchesSearch;
+    });
 
-  const keyMap = {
-    updated_at: ["updated_at", "updatedAt"],
-    created_at: ["created_at", "createdAt"],
-    inquiry_date: ["inquiry_date", "inquiryDate"],
-    delivery_date: ["delivery_date", "deliveryDate"],
-    installation_date: ["installation_date", "installationDate"],
-  };
+    const keyMap = {
+      updated_at: ["updated_at", "updatedAt"],
+      created_at: ["created_at", "createdAt"],
+      inquiry_date: ["inquiry_date", "inquiryDate"],
+      delivery_date: ["delivery_date", "deliveryDate"],
+      installation_date: ["installation_date", "installationDate"],
+      ad_number: ["ad_number"],
+    };
 
-  const pick = (obj, key) => {
-    const keys = keyMap[key] || [key];
-    for (const k of keys) {
-      const v = obj?.[k];
-      if (v != null && v !== "") return v;
-    }
-    return null;
-  };
+    const pick = (obj, key) => {
+      const keys = keyMap[key] || [key];
+      for (const k of keys) {
+        const v = obj?.[k];
+        if (v != null && v !== "") return v;
+      }
+      return null;
+    };
 
-  const toMs = (v) => {
-    if (!v) return null;
-    const s = String(v).replace(" ", "T").replace(/\+00$/, "+00:00");
-    const t = Date.parse(s);
-    return Number.isFinite(t) ? t : null;
-  };
+    const toMs = (v) => {
+      if (!v) return null;
+      const s = String(v).replace(" ", "T").replace(/\+00$/, "+00:00");
+      const t = Date.parse(s);
+      return Number.isFinite(t) ? t : null;
+    };
 
-  const dir = sortOrder === "desc" ? -1 : 1;
+    const dir = sortOrder === "desc" ? -1 : 1;
 
-  const sorted = [...filtered].sort((a, b) => {
-    const aMs = toMs(pick(a, sortKey));
-    const bMs = toMs(pick(b, sortKey));
+    const sorted = [...filtered].sort((a, b) => {
+      // ✅ AD番号専用ソート（0始まり保持 / number化されてても落ちない）
+      if (sortKey === "ad_number") {
+        const aRaw = pick(a, "ad_number");
+        const bRaw = pick(b, "ad_number");
 
-    if (aMs == null && bMs == null) return 0;
-    if (aMs == null) return 1;
-    if (bMs == null) return -1;
+        if (aRaw == null && bRaw == null) return 0;
+        if (aRaw == null) return 1;
+        if (bRaw == null) return -1;
 
-    return (aMs - bMs) * dir;
-  });
+        // ✅ ここが重要：必ず文字列にする
+        const aVal = String(aRaw);
+        const bVal = String(bRaw);
 
-  return sorted; // ← ★ これが無いと絶対に反映されない
-}, [projects, selectedFilter, searchQuery, sortKey, sortOrder]);
+        // 桁揃え（最大桁数に合わせる）
+        const maxLen = Math.max(aVal.length, bVal.length);
+        const aPadded = aVal.padStart(maxLen, "0");
+        const bPadded = bVal.padStart(maxLen, "0");
 
+        return aPadded.localeCompare(bPadded) * dir;
+      }
+
+      // ▼ それ以外（日付系）は今まで通り
+      const aMs = toMs(pick(a, sortKey));
+      const bMs = toMs(pick(b, sortKey));
+
+      if (aMs == null && bMs == null) return 0;
+      if (aMs == null) return 1;
+      if (bMs == null) return -1;
+
+      return (aMs - bMs) * dir;
+    });
+
+    return sorted; // ← ★ これが無いと絶対に反映されない
+  }, [projects, selectedFilter, searchQuery, sortKey, sortOrder]);
 
   return (
     <div className="min-h-screen bg-gray-50 font-inter">
@@ -143,7 +165,11 @@ export default function AllProjectsPage() {
         onSearchQueryChange={setSearchQuery}
       />
 
-      <MobileSearch show={showMobileSearch} query={searchQuery} onQueryChange={setSearchQuery} />
+      <MobileSearch
+        show={showMobileSearch}
+        query={searchQuery}
+        onQueryChange={setSearchQuery}
+      />
 
       <main className="lg:ml-16">
         <Breadcrumbs />
@@ -168,13 +194,16 @@ export default function AllProjectsPage() {
                   <option value="inquiry_date">問い合わせ日</option>
                   <option value="delivery_date">納品日</option>
                   <option value="installation_date">設置日</option>
+                  <option value="ad_number">AD番号</option>
                 </select>
 
                 <button
                   type="button"
                   className="border rounded px-2 py-1 text-sm bg-white"
                   title="並び順切替"
-                  onClick={() => setSortOrder((prev) => (prev === "desc" ? "asc" : "desc"))}
+                  onClick={() =>
+                    setSortOrder((prev) => (prev === "desc" ? "asc" : "desc"))
+                  }
                 >
                   {sortOrder === "desc" ? "▼" : "▲"}
                 </button>
@@ -189,7 +218,7 @@ export default function AllProjectsPage() {
 
         {viewMode === "grid" ? (
           <ProjectGrid
-            key={`${sortKey}-${sortOrder}-grid`}  // ✅ 念のため強制再描画（保険）
+            key={`${sortKey}-${sortOrder}-grid`} // ✅ 念のため強制再描画（保険）
             projects={filteredProjects}
             isLoading={isLoading}
             error={error}
@@ -198,7 +227,7 @@ export default function AllProjectsPage() {
           />
         ) : (
           <ProjectList
-            key={`${sortKey}-${sortOrder}-list`}  // ✅ 念のため強制再描画（保険）
+            key={`${sortKey}-${sortOrder}-list`} // ✅ 念のため強制再描画（保険）
             projects={filteredProjects}
             isLoading={isLoading}
             error={error}
