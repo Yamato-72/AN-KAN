@@ -362,6 +362,7 @@ const handleToggleLost = async () => {
             projectId={project.id}
             project={project}
             disabled={false}
+            onUpdated={refetch}
           />
         </div>
       </div>

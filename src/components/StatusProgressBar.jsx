@@ -12,6 +12,7 @@ export const StatusProgressBar = ({
   projectId,
   disabled = false,
   project,
+  onUpdated,
 }) => {
   const [showInstallationModal, setShowInstallationModal] = useState(false);
   const [pendingInstallationData, setPendingInstallationData] = useState(null);
@@ -107,6 +108,8 @@ export const StatusProgressBar = ({
       if (result?.message) {
         toast.success(result.message);
       }
+
+      if (onUpdated) await onUpdated();
     } catch (error) {
       toast.error(error.message);
     }
@@ -162,6 +165,8 @@ export const StatusProgressBar = ({
       if (result?.message) {
         toast.success(result.message);
       }
+
+      if (onUpdated) await onUpdated();
     } catch (error) {
       toast.error(error.message);
     } finally {
@@ -196,6 +201,8 @@ export const StatusProgressBar = ({
           toast.success(result.message);
         }
       }
+
+      if (onUpdated) await onUpdated();
     } catch (error) {
       toast.error(error.message);
     }
@@ -219,6 +226,8 @@ export const StatusProgressBar = ({
       if (result?.message) {
         toast.success(result.message);
       }
+
+      if (onUpdated) await onUpdated();
     } catch (error) {
       toast.error(error.message);
     }
