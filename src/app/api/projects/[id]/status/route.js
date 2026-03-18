@@ -18,7 +18,12 @@ export async function PUT(request, { params }) {
 
     // 現在のプロジェクト情報を取得
     const project = await sql`
-      SELECT * FROM projects WHERE id = ${id}
+      SELECT
+        p.*,
+        c.client_name AS resolved_client_name
+      FROM projects p
+      LEFT JOIN clients c ON p.client_id = c.id
+      WHERE p.id = ${id}
     `;
 
     if (project.length === 0) {
@@ -125,9 +130,9 @@ export async function PUT(request, { params }) {
       // projectsテーブルのカラム名に合わせて調整してね（ad_number or ad など）
       const payload = {
         project_id: project[0].id,
-        ad: project[0].ad_number ?? project[0].ad, // ←どっちか合う方
+        ad: project[0].ad_number,
         project_name: project[0].project_name,
-        client_name: project[0].client_name, // ←もしprojectsに無いなら後述
+        client_name: project[0].resolved_client_name,
       };
 
       const resp = await fetch(`${odaPayUrl}/api/ankan/ordered-projects/upsert`, {
