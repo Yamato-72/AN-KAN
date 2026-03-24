@@ -4,7 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { useProjects } from "@/hooks/useProjects";
 import { MonthlyRevenueChart } from "@/components/analysis/MonthlyRevenueChart";
-
+import { StaffSalesMiniChart } from "@/components/analysis/StaffSalesMiniChart";
+import { CollectionRateTable } from "@/components/analysis/CollectionRateTable";
 
 export default function AnalysisPage({ params }) {
   const { userId } = params; // A / B / F など（staff_members.code）
@@ -12,6 +13,7 @@ export default function AnalysisPage({ params }) {
   const [staff, setStaff] = useState(null);
   const [staffLoading, setStaffLoading] = useState(true);
   const [staffError, setStaffError] = useState(null);
+  const [staffList, setStaffList] = useState([]);
 
   // ▼ スタッフ情報取得（名前を出したいので）
   useEffect(() => {
@@ -24,11 +26,11 @@ export default function AnalysisPage({ params }) {
       try {
         const res = await fetch("/api/staff");
         if (!res.ok) throw new Error("Failed to fetch staff");
-        const staffList = await res.json();
+        const staffListData = await res.json();
+          setStaffList(staffListData);
 
-        // code または id で一致するスタッフを取得
-        const found = staffList.find(
-          (s) => s.code === userId || String(s.id) === String(userId),
+          const found = staffListData.find(
+            (s) => s.code === userId || String(s.id) === String(userId),
         );
 
         if (!found) {
@@ -70,11 +72,20 @@ export default function AnalysisPage({ params }) {
   // ▼ 担当者コード（useProjects 用）
   const staffCode = staff?.code || userId;
 
+  // ▼ 個人案件
   const {
     data: projects,
     isLoading: projectsLoading,
     error: projectsError,
   } = useProjects(staffCode);
+
+  // ▼ 全体比較用（引数なしで全件取得できる想定）
+  const {
+    data: allProjects,
+    isLoading: allProjectsLoading,
+    error: allProjectsError,
+  } = useProjects();
+
 
   // ▼ 金額集計（見積・売上・残高、ステータス別、月別）
   const {
@@ -101,8 +112,7 @@ export default function AnalysisPage({ params }) {
     const monthMap = {};
 
     projects.forEach((p) => {
-      const est =
-        Number(p.estimated_amount ?? p.estimatedAmount ?? 0) || 0;
+      const est = Number(p.estimated_amount ?? p.estimatedAmount ?? 0) || 0;
       const rev = Number(p.revenue ?? 0) || 0;
       estTotal += est;
       revTotal += rev;
@@ -151,7 +161,6 @@ export default function AnalysisPage({ params }) {
     const outstanding = estTotal - revTotal;
 
     const statusSummaryArr = Object.values(statusMap).sort((a, b) => {
-      // 大きい金額順
       return b.estimated - a.estimated;
     });
 
@@ -168,10 +177,62 @@ export default function AnalysisPage({ params }) {
     };
   }, [projects]);
 
+  // ▼ 今月の全営業比較
+  const staffComparisonThisMonth = useMemo(() => {
+  if (!allProjects || allProjects.length === 0) return [];
+
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth();
+
+  const staffMap = {};
+
+  allProjects.forEach((p) => {
+    const dateStr =
+      p.delivery_date ||
+      p.installation_date ||
+      p.created_at ||
+      null;
+
+    if (!dateStr) return;
+
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return;
+
+    if (d.getFullYear() !== currentYear || d.getMonth() !== currentMonth) {
+      return;
+    }
+
+    const staffCode = p.assigned_team_member || "unknown";
+
+    const matchedStaff = staffList.find((s) => s.code === staffCode);
+
+    const staffName = matchedStaff?.name || staffCode;
+
+    const estimated = Number(p.estimated_amount ?? 0) || 0;
+    const revenue = Number(p.revenue ?? 0) || 0;
+
+    if (!staffMap[staffCode]) {
+      staffMap[staffCode] = {
+        userId: matchedStaff?.id || staffCode,
+        code: staffCode,
+        name: staffName,
+        estimated: 0,
+        revenue: 0,
+      };
+    }
+
+    staffMap[staffCode].estimated += estimated;
+    staffMap[staffCode].revenue += revenue;
+  });
+
+  return Object.values(staffMap).sort((a, b) => b.revenue - a.revenue);
+}, [allProjects, staffList]);
+
   const displayName = staff?.name || `${userId} さん`;
 
   const formatYen = (value) =>
-    value.toLocaleString("ja-JP", {
+    Number(value || 0).toLocaleString("ja-JP", {
       style: "currency",
       currency: "JPY",
       maximumFractionDigits: 0,
@@ -192,15 +253,6 @@ export default function AnalysisPage({ params }) {
           </p>
         </header>
 
-        {/* ③ 月別 金額グラフ */}
-        <section className="bg-white rounded-xl shadow p-4">
-        <h2 className="text-sm font-semibold mb-3">
-            月別の見積・売上推移（グラフ）
-        </h2>
-        <MonthlyRevenueChart data={monthlySummary} />
-        </section>
-
-
         {/* スタッフエラー表示 */}
         {staffError && (
           <div className="bg-red-50 border border-red-200 text-red-700 rounded-md px-4 py-2 text-sm">
@@ -209,9 +261,10 @@ export default function AnalysisPage({ params }) {
         )}
 
         {/* ローディング・エラー */}
-        {projectsLoading && (
+        {(projectsLoading || staffLoading) && (
           <p className="text-gray-600 text-sm">案件データを読み込み中です…</p>
         )}
+
         {projectsError && (
           <p className="text-red-500 text-sm">
             案件データの取得に失敗しました。
@@ -220,6 +273,20 @@ export default function AnalysisPage({ params }) {
 
         {!projectsLoading && !projectsError && (
           <>
+            {/* 追加：今月の全体比較 */}
+            {!allProjectsLoading && !allProjectsError && (
+              <section className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                <StaffSalesMiniChart
+                  data={staffComparisonThisMonth}
+                  currentUserId={userId}
+                />
+                <CollectionRateTable
+                  data={staffComparisonThisMonth}
+                  currentUserId={userId}
+                />
+              </section>
+            )}
+
             {/* ① サマリーカード */}
             <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="bg-white rounded-xl shadow p-4">
@@ -290,9 +357,7 @@ export default function AnalysisPage({ params }) {
                       {statusSummary.map((row) => (
                         <tr key={row.status} className="border-b last:border-b-0">
                           <td className="py-2 px-2">{row.status}</td>
-                          <td className="py-2 px-2 text-right">
-                            {row.count}
-                          </td>
+                          <td className="py-2 px-2 text-right">{row.count}</td>
                           <td className="py-2 px-2 text-right">
                             {formatYen(row.estimated)}
                           </td>
@@ -310,7 +375,15 @@ export default function AnalysisPage({ params }) {
               )}
             </section>
 
-            {/* ③ 月別 金額サマリ（シンプルな表） */}
+            {/* ③ 月別 金額グラフ */}
+            <section className="bg-white rounded-xl shadow p-4">
+              <h2 className="text-sm font-semibold mb-3">
+                月別の見積・売上推移（グラフ）
+              </h2>
+              <MonthlyRevenueChart data={monthlySummary} />
+            </section>
+
+            {/* ④ 月別 金額サマリ（シンプルな表） */}
             <section className="bg-white rounded-xl shadow p-4">
               <h2 className="text-sm font-semibold mb-3">
                 月別の見積・売上推移（納品日/設置日ベース）

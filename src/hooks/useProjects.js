@@ -2,10 +2,10 @@ import { useQuery } from "@tanstack/react-query";
 
 export const useProjects = (assignedTeamMemberId = null) => {
   return useQuery({
-    queryKey: ["projects", assignedTeamMemberId],
+    queryKey: ["projects", assignedTeamMemberId ?? "all"],
     queryFn: async () => {
-      // Build query parameters
       const searchParams = new URLSearchParams();
+
       if (assignedTeamMemberId) {
         searchParams.append("assigned_team_member", assignedTeamMemberId);
       }
@@ -18,9 +18,11 @@ export const useProjects = (assignedTeamMemberId = null) => {
           Pragma: "no-cache",
         },
       });
+
       if (!response.ok) {
         throw new Error("Failed to fetch projects");
       }
+
       const data = await response.json();
 
       // 重複防止: idでユニークにする
@@ -31,12 +33,8 @@ export const useProjects = (assignedTeamMemberId = null) => {
 
       return uniqueData;
     },
-    enabled: !!assignedTeamMemberId, // assignedTeamMemberIdがある場合のみ実行
-    staleTime: 0, // すぐに古いデータと判断
+    staleTime: 0,
     refetchOnWindowFocus: false,
     refetchOnMount: true,
   });
 };
-
-
-
