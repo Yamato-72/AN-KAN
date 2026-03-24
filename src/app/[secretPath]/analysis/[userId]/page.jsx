@@ -164,9 +164,9 @@ export default function AnalysisPage({ params }) {
       return b.estimated - a.estimated;
     });
 
-    const monthlySummaryArr = Object.values(monthMap).sort((a, b) =>
-      a.month.localeCompare(b.month),
-    );
+    const monthlySummaryArr = Object.values(monthMap)
+      .sort((a, b) => b.month.localeCompare(a.month)) // 新しい年月を上に
+      .slice(0, 12); // 直近12件だけ
 
     return {
       totalEstimated: estTotal,
