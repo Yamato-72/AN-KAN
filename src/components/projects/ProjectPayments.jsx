@@ -19,12 +19,10 @@ export function ProjectPayments({ projectId }) {
   });
 
   const paymentTypes = [
-    "支払い",
-    "前金",
-    "残金",
-    "海外送金",
-    "材料費",
+    "国際仕入",
+    "国内仕入",
     "工事費",
+    "送料",
     "その他",
   ];
 
