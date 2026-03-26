@@ -6,7 +6,8 @@ import {
   BarChart3,
   Settings,
   Wrench,
-  Flag, 
+  Flag,
+  Banknote, 
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { createSecretUrl } from "@/utils/secretPath";
@@ -64,6 +65,12 @@ export const Sidebar = () => {
       href: createSecretUrl("/contractors"),
       isActive: pathname.startsWith(createSecretUrl("/contractors")),
       title: "設置業者",
+    },
+    {
+      icon: Banknote, // 好きなアイコンに変えてOK
+      href: "https://an-kan-admin-47228502594.europe-west1.run.app/oda-pay", // ← 外部URLそのまま
+      isActive: false, // 外部なので基本これでOK
+      title: "支払管理",
     },
   ];
 
