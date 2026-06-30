@@ -175,6 +175,3 @@ export function ProjectBasicInfo({ project }) {
     </div>
   );
 }
-
-
-
