@@ -7,6 +7,7 @@ import {
   Clock,
   MapPin,
   Tag, // Add Tag icon for product number
+  Link2, // 関連元案件のリンク用
 } from "lucide-react";
 import { formatDate, formatDateTime } from "@/utils/dateFormatters";
 
@@ -57,6 +58,28 @@ export function ProjectBasicInfo({ project }) {
               {project.prefix || "AD"}-{project.ad_number || project.id}
             </p>
           </div>
+
+          {project.related_project_id && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                <Link2 size={16} className="inline mr-2" />
+                関連する元案件
+              </label>
+              <button
+                type="button"
+                onClick={() => {
+                  const base = window.location.pathname.replace(/\/[^/]+$/, "");
+                  window.location.href = `${base}/${project.related_project_id}`;
+                }}
+                className="text-blue-700 hover:text-blue-900 hover:underline text-left"
+              >
+                {project.related_prefix || "AD"}-{project.related_ad_number}
+                {project.related_project_name
+                  ? `　${project.related_project_name}`
+                  : ""}
+              </button>
+            </div>
+          )}
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">

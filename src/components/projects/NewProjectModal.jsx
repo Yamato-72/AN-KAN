@@ -14,6 +14,7 @@ const getTwoMonthsLater = () => {
 const INITIAL_FORM_DATA = {
   prefix: DEFAULT_PREFIX,
   ad_number: "",
+  related_project_id: null,
   project_name: "",
   client_name: "",
   inquiry_date: "", // 問い合わせ日を追加
@@ -44,6 +45,50 @@ export const NewProjectModal = ({
   const [formError, setFormError] = useState("");
   const [isEditing, setIsEditing] = useState(false);
   const [isLoadingAdNumber, setIsLoadingAdNumber] = useState(false);
+
+  // 関連する元案件（TS修理案件の親AD）を検索・紐づけする状態
+  const [relatedQuery, setRelatedQuery] = useState("");
+  const [relatedResults, setRelatedResults] = useState([]);
+  const [showRelatedSuggestions, setShowRelatedSuggestions] = useState(false);
+  const [relatedLabel, setRelatedLabel] = useState(""); // 選択済みの表示ラベル
+
+  // AD案件を検索（関連元の候補）
+  const searchRelated = async (q) => {
+    setRelatedQuery(q);
+    if (!q || q.trim() === "") {
+      setRelatedResults([]);
+      setShowRelatedSuggestions(false);
+      return;
+    }
+    try {
+      const res = await fetch(`/api/projects?search=${encodeURIComponent(q)}`);
+      if (res.ok) {
+        const data = await res.json();
+        // AD案件のみを候補にする（修理の親は通常AD）
+        const adOnly = (data || []).filter((p) => (p.prefix || "AD") === "AD");
+        setRelatedResults(adOnly.slice(0, 8));
+        setShowRelatedSuggestions(adOnly.length > 0);
+      }
+    } catch (e) {
+      console.error("関連案件の検索に失敗:", e);
+    }
+  };
+
+  // 候補を選んで紐づけ
+  const selectRelated = (p) => {
+    setFormData((prev) => ({ ...prev, related_project_id: p.id }));
+    setRelatedLabel(`${p.prefix || "AD"}-${p.ad_number}　${p.project_name || ""}`);
+    setRelatedQuery("");
+    setRelatedResults([]);
+    setShowRelatedSuggestions(false);
+  };
+
+  // 紐づけ解除
+  const clearRelated = () => {
+    setFormData((prev) => ({ ...prev, related_project_id: null }));
+    setRelatedLabel("");
+    setRelatedQuery("");
+  };
 
   // クライアント候補機能
   const [clients, setClients] = useState([]);
@@ -150,6 +195,10 @@ export const NewProjectModal = ({
   // 接頭辞を切り替えたら、その接頭辞の次の番号を取り直す（新規作成時のみ）
   const handlePrefixChange = async (newPrefix) => {
     setFormData((prev) => ({ ...prev, prefix: newPrefix }));
+    // TS以外に切り替えたら、関連元の紐づけは外す（TS＝修理案件のときだけ使う項目）
+    if (newPrefix !== "TS") {
+      clearRelated();
+    }
     if (!isEditing) {
       const next = await fetchNextAdNumber(newPrefix);
       setFormData((prev) => ({ ...prev, ad_number: (next || "").toString() }));
@@ -169,6 +218,7 @@ export const NewProjectModal = ({
         setFormData({
           prefix: editProject.prefix || DEFAULT_PREFIX,
           ad_number: editProject.ad_number || "",
+          related_project_id: editProject.related_project_id || null,
           project_name: editProject.project_name || "",
           client_name: editProject.client_name || "",
           inquiry_date: editProject.inquiry_date
@@ -196,6 +246,14 @@ export const NewProjectModal = ({
           email: editProject.email || "",
           installation_cost: editProject.installation_cost || "",
         });
+        // 関連元ラベルを復元（詳細から開いた場合は related_* が入っている）
+        if (editProject.related_project_id && editProject.related_ad_number) {
+          setRelatedLabel(
+            `${editProject.related_prefix || "AD"}-${editProject.related_ad_number}　${editProject.related_project_name || ""}`,
+          );
+        } else {
+          setRelatedLabel("");
+        }
       } else {
         // 新規作成モード：担当者情報と次のAD番号を取得
         const initializeForm = async () => {
@@ -251,9 +309,11 @@ export const NewProjectModal = ({
             ...prev,
             prefix: DEFAULT_PREFIX,
             ad_number: nextAdNumber.toString(),
+            related_project_id: null,
             assigned_team_member: assignedTeamMember,
             delivery_date: "", // 空文字列に変更
           }));
+          setRelatedLabel("");
         };
 
         initializeForm();
@@ -316,6 +376,9 @@ export const NewProjectModal = ({
     setFormData(INITIAL_FORM_DATA);
     setShowClientSuggestions(false);
     setShowContractorSuggestions(false);
+    setRelatedLabel("");
+    setRelatedQuery("");
+    setShowRelatedSuggestions(false);
   };
 
   const handleFormSubmit = async (e) => {
@@ -442,6 +505,57 @@ export const NewProjectModal = ({
               />
             </div>
           </div>
+
+          {formData.prefix === "TS" && (
+            <div className="relative">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                関連する元案件（AD）
+              </label>
+              {relatedLabel ? (
+                <div className="flex items-center justify-between px-3 py-2 border border-blue-200 rounded-lg bg-blue-50">
+                  <span className="text-sm text-blue-800">{relatedLabel}</span>
+                  <button
+                    type="button"
+                    onClick={clearRelated}
+                    className="text-xs text-gray-500 hover:text-red-600 ml-2 shrink-0"
+                  >
+                    解除
+                  </button>
+                </div>
+              ) : (
+                <input
+                  type="text"
+                  value={relatedQuery}
+                  onChange={(e) => searchRelated(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                  placeholder="AD番号や案件名で検索（例: 905）"
+                  autoComplete="off"
+                />
+              )}
+              {showRelatedSuggestions && relatedResults.length > 0 && (
+                <div className="absolute left-0 right-0 bg-white border border-gray-300 rounded-lg shadow-lg z-10 max-h-60 overflow-y-auto mt-1">
+                  {relatedResults.map((p) => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => selectRelated(p)}
+                      className="w-full px-4 py-3 text-left hover:bg-gray-50 border-b border-gray-100 last:border-b-0"
+                    >
+                      <div className="font-medium text-gray-900">
+                        {p.prefix || "AD"}-{p.ad_number}
+                      </div>
+                      <div className="text-sm text-gray-600">
+                        {p.project_name}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+              <p className="text-xs text-gray-500 mt-1">
+                修理・保守の場合、元の販売案件（AD）を紐づけます
+              </p>
+            </div>
+          )}
 
           <div className="relative">
             <label className="block text-sm font-medium text-gray-700 mb-2">

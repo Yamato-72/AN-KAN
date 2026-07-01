@@ -16,10 +16,14 @@ export async function GET(request, { params }) {
         c.contact_person,
         c.email,
         p.drive_folder_id,
-        p.drive_folder_link
+        p.drive_folder_link,
+        rp.prefix as related_prefix,
+        rp.ad_number as related_ad_number,
+        rp.project_name as related_project_name
       FROM projects p
       LEFT JOIN staff_members s ON p.assigned_team_member = s.code
       LEFT JOIN clients c ON p.client_id = c.id
+      LEFT JOIN projects rp ON p.related_project_id = rp.id
       WHERE p.id = ${id}
     `;
 
@@ -85,6 +89,7 @@ export async function PUT(request, { params }) {
       installation_contractor2,
       remarks,
       product_number, // 製品番号を追加
+      related_project_id, // 関連元案件（修理の親など）
       address,
       phone_number,
       estimated_amount,
@@ -258,6 +263,12 @@ export async function PUT(request, { params }) {
       paramCount++;
       updates.push(`product_number = $${paramCount}`);
       values.push(product_number);
+    }
+    if (related_project_id !== undefined) {
+      paramCount++;
+      updates.push(`related_project_id = $${paramCount}`);
+      // 空文字やnullは「紐づけ解除」としてNULLに正規化
+      values.push(related_project_id ? parseInt(related_project_id) : null);
     }
     if (address !== undefined) {
       paramCount++;
