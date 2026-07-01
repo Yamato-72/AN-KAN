@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { X } from "lucide-react";
+import { formatProjectNumber } from "@/lib/prefixes";
 
 // ============================================================
 // TS案件を在庫ナビ（サービス発券）へ送るモーダル
@@ -24,7 +25,7 @@ export const IssueServiceModal = ({ show, onClose, project, onSuccess }) => {
 
   if (!show) return null;
 
-  const label = `${project?.prefix || "TS"}-${project?.ad_number ?? ""}`;
+  const label = formatProjectNumber(project?.prefix, project?.ad_number);
 
   const handleIssue = async () => {
     setError("");

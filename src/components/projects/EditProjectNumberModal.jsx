@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { X } from "lucide-react";
-import { PROJECT_PREFIXES } from "@/lib/prefixes";
+import { PROJECT_PREFIXES, formatProjectNumber } from "@/lib/prefixes";
 
 // ============================================================
 // 案件番号（接頭辞 + 番号）だけを変更する専用モーダル
@@ -26,8 +26,8 @@ export const EditProjectNumberModal = ({ show, onClose, project, onSuccess }) =>
 
   if (!show) return null;
 
-  const currentLabel = `${project?.prefix || "AD"}-${project?.ad_number ?? ""}`;
-  const nextLabel = `${prefix}-${adNumber || ""}`;
+  const currentLabel = formatProjectNumber(project?.prefix, project?.ad_number);
+  const nextLabel = formatProjectNumber(prefix, adNumber);
 
   const handleSave = async () => {
     setError("");

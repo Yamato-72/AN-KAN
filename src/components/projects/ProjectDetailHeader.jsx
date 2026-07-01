@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ArrowLeft, ExternalLink, Pencil, PackagePlus } from "lucide-react";
 import { getStatusColor } from "@/utils/statusColors";
+import { formatProjectNumber } from "@/lib/prefixes";
 import { EditProjectNumberModal } from "@/components/projects/EditProjectNumberModal";
 import { IssueServiceModal } from "@/components/projects/IssueServiceModal";
 
@@ -40,7 +41,7 @@ export function ProjectDetailHeader({ project, onBack }) {
             </div>
             <div className="flex items-center gap-2">
               <p className="text-sm text-gray-600">
-                {project.prefix || "AD"}-{project.ad_number || project.id}
+                {formatProjectNumber(project.prefix, project.ad_number || project.id)}
               </p>
               <button
                 onClick={() => setShowNumberModal(true)}

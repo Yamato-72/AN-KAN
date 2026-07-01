@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { X, ChevronDown } from "lucide-react";
 import { useCreateProject } from "@/hooks/useCreateProject";
-import { PROJECT_PREFIXES, DEFAULT_PREFIX } from "@/lib/prefixes";
+import { PROJECT_PREFIXES, DEFAULT_PREFIX, formatProjectNumber } from "@/lib/prefixes";
 
 // 2か月後の日付を取得する関数
 const getTwoMonthsLater = () => {
@@ -77,7 +77,7 @@ export const NewProjectModal = ({
   // 候補を選んで紐づけ
   const selectRelated = (p) => {
     setFormData((prev) => ({ ...prev, related_project_id: p.id }));
-    setRelatedLabel(`${p.prefix || "AD"}-${p.ad_number}　${p.project_name || ""}`);
+    setRelatedLabel(`${formatProjectNumber(p.prefix, p.ad_number)}　${p.project_name || ""}`);
     setRelatedQuery("");
     setRelatedResults([]);
     setShowRelatedSuggestions(false);
@@ -249,7 +249,7 @@ export const NewProjectModal = ({
         // 関連元ラベルを復元（詳細から開いた場合は related_* が入っている）
         if (editProject.related_project_id && editProject.related_ad_number) {
           setRelatedLabel(
-            `${editProject.related_prefix || "AD"}-${editProject.related_ad_number}　${editProject.related_project_name || ""}`,
+            `${formatProjectNumber(editProject.related_prefix, editProject.related_ad_number)}　${editProject.related_project_name || ""}`,
           );
         } else {
           setRelatedLabel("");
@@ -486,7 +486,7 @@ export const NewProjectModal = ({
               <p className="text-xs text-gray-500 mt-1">
                 {isLoadingAdNumber
                   ? "次の番号を取得中..."
-                  : `表示時は「${formData.prefix}-${formData.ad_number || "12345"}」となります`}
+                  : `表示時は「${formatProjectNumber(formData.prefix, formData.ad_number || "12345")}」となります`}
               </p>
             </div>
 
@@ -542,7 +542,7 @@ export const NewProjectModal = ({
                       className="w-full px-4 py-3 text-left hover:bg-gray-50 border-b border-gray-100 last:border-b-0"
                     >
                       <div className="font-medium text-gray-900">
-                        {p.prefix || "AD"}-{p.ad_number}
+                        {formatProjectNumber(p.prefix, p.ad_number)}
                       </div>
                       <div className="text-sm text-gray-600">
                         {p.project_name}

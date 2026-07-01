@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { X, Copy, Check } from "lucide-react";
+import { formatProjectNumber } from "@/lib/prefixes";
 import {
   getTodayFormatted,
   getNextMonthEndDate,
@@ -36,7 +37,7 @@ export const InvoiceTemplateModal = ({
   const sendDate = getTodayFormatted();
   const paymentDueDate = getNextMonthEndDate();
 
-  const invoiceTemplate = `案件番号：${project?.prefix || "AD"}-${project?.ad_number || ""}
+  const invoiceTemplate = `案件番号：${formatProjectNumber(project?.prefix, project?.ad_number)}
 顧客正式名：${project?.client_name || ""}
 請求先住所、部署、担当者名（担当者名があれば）：${getBillingAddress()}
 請求書送付希望日または発行希望日：${sendDate}

@@ -10,6 +10,7 @@ import {
   Link2, // 関連元案件のリンク用
 } from "lucide-react";
 import { formatDate, formatDateTime } from "@/utils/dateFormatters";
+import { formatProjectNumber } from "@/lib/prefixes";
 
 export function ProjectBasicInfo({ project }) {
   return (
@@ -55,7 +56,7 @@ export function ProjectBasicInfo({ project }) {
               AD番号
             </label>
             <p className="text-gray-900">
-              {project.prefix || "AD"}-{project.ad_number || project.id}
+              {formatProjectNumber(project.prefix, project.ad_number || project.id)}
             </p>
           </div>
 
@@ -73,7 +74,7 @@ export function ProjectBasicInfo({ project }) {
                 }}
                 className="text-blue-700 hover:text-blue-900 hover:underline text-left"
               >
-                {project.related_prefix || "AD"}-{project.related_ad_number}
+                {formatProjectNumber(project.related_prefix, project.related_ad_number)}
                 {project.related_project_name
                   ? `　${project.related_project_name}`
                   : ""}

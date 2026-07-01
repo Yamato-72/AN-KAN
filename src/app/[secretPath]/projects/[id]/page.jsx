@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { formatProjectNumber } from "@/lib/prefixes";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { NewProjectModal } from "@/components/projects/NewProjectModal";
 import { ProjectLogs } from "@/components/projects/ProjectLogs";
@@ -195,7 +196,7 @@ const handleToggleLost = async () => {
                     AD番号
                   </label>
                   <div className="text-lg text-gray-900">
-                    {project.prefix || "AD"}-{project.ad_number}
+                    {formatProjectNumber(project.prefix, project.ad_number)}
                   </div>
                 </div>
               )}
