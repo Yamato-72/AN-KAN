@@ -180,7 +180,7 @@ export const ProjectList = ({
                   >
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                       <div className="flex items-center gap-2">
-                        {project.ad_number ? `AD-${project.ad_number}` : "-"}
+                        {project.ad_number ? `${project.prefix || "AD"}-${project.ad_number}` : "-"}
                         {project.trouble_flag && (
                           <AlertTriangle
                             size={14}

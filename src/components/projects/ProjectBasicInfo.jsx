@@ -54,7 +54,7 @@ export function ProjectBasicInfo({ project }) {
               AD番号
             </label>
             <p className="text-gray-900">
-              AD-{project.ad_number || project.id}
+              {project.prefix || "AD"}-{project.ad_number || project.id}
             </p>
           </div>
 

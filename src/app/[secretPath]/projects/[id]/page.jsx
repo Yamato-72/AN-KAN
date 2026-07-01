@@ -195,7 +195,7 @@ const handleToggleLost = async () => {
                     AD番号
                   </label>
                   <div className="text-lg text-gray-900">
-                    AD-{project.ad_number}
+                    {project.prefix || "AD"}-{project.ad_number}
                   </div>
                 </div>
               )}

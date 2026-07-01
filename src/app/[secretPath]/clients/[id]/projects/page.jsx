@@ -239,7 +239,7 @@ function ClientProjectsPage({ params }) {
                         >
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                             {project.ad_number
-                              ? `AD-${project.ad_number}`
+                              ? `${project.prefix || "AD"}-${project.ad_number}`
                               : "-"}
                           </td>
                           <td className="px-6 py-4 text-sm text-gray-900">

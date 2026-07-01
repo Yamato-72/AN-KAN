@@ -1,5 +1,6 @@
 import { query } from "@/lib/db";
 import { createGoogleDriveFolder } from "@/app/api/utils/googleDrive";
+import { normalizePrefix } from "@/lib/prefixes";
 
 export async function GET(request) {
   try {
@@ -71,11 +72,13 @@ export async function GET(request) {
         LOWER(c.contact_person) LIKE LOWER($${parameters.length + 3}) OR
         LOWER(c.email) LIKE LOWER($${parameters.length + 4}) OR
         LOWER(p.remarks) LIKE LOWER($${parameters.length + 5}) OR
-        CAST(p.ad_number AS TEXT) LIKE $${parameters.length + 6}
+        CAST(p.ad_number AS TEXT) LIKE $${parameters.length + 6} OR
+        (p.prefix || '-' || CAST(p.ad_number AS TEXT)) ILIKE $${parameters.length + 7}
       )`);
 
       const searchPattern = `%${search}%`;
       parameters.push(
+        searchPattern,
         searchPattern,
         searchPattern,
         searchPattern,
@@ -141,6 +144,7 @@ export async function POST(request) {
   try {
     const body = await request.json();
     const {
+      prefix,
       ad_number,
       project_name,
       client_name,
@@ -175,6 +179,9 @@ export async function POST(request) {
         { status: 400 }
       );
     }
+
+    // 接頭辞を正規化（AD/SP/TS以外はADに丸める）
+    const normalizedPrefix = normalizePrefix(prefix);
 
     // 担当者コード変換（ID → code / code → code）
     let assignedCode = null;
@@ -272,6 +279,7 @@ export async function POST(request) {
     const insertedProject = await query(
       `
       INSERT INTO projects (
+        prefix,
         ad_number,
         project_name,
         client_id,
@@ -291,11 +299,12 @@ export async function POST(request) {
       ) VALUES (
         $1, $2, $3, $4, $5,
         $6, $7, $8, $9, $10,
-        $11, $12, $13, $14, NOW(), NOW()
+        $11, $12, $13, $14, $15, NOW(), NOW()
       )
       RETURNING *
       `,
       [
+        normalizedPrefix,
         parseInt(ad_number),
         project_name,
         clientId,
@@ -333,7 +342,7 @@ export async function POST(request) {
     let driveFolderLink = null;
 
     try {
-      const folderName = `AD-${project.ad_number}`;
+      const folderName = `${project.prefix || "AD"}-${project.ad_number}`;
       const driveResult = await createGoogleDriveFolder(folderName);
 
       if (

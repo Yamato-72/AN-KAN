@@ -33,7 +33,7 @@ export function ProjectDetailHeader({ project, onBack }) {
               )}
             </div>
             <p className="text-sm text-gray-600">
-              AD-{project.ad_number || project.id}
+              {project.prefix || "AD"}-{project.ad_number || project.id}
             </p>
           </div>
           <span

@@ -1,9 +1,11 @@
 import sql from "@/app/api/utils/sql";
+import { normalizePrefix } from "@/lib/prefixes";
 
 // ============================================================
-// 案件番号(ad_number)だけを変更する専用窓口
+// 案件番号(prefix + ad_number)を変更する専用窓口
 //   - 既存の更新APIとは別に、ここで「重複チェック」を必ず通す
-//   - 同じ番号が他案件で使われていたら変更を止める（事故防止）
+//   - 「接頭辞 + 番号」の組で他案件と衝突していたら変更を止める（事故防止）
+//   - 接頭辞(prefix)も一緒に変えられる。未指定なら今の接頭辞のまま
 //   - 変更内容はアクティビティログに残す
 // ============================================================
 
@@ -24,34 +26,40 @@ export async function PUT(request, { params }) {
       );
     }
 
-    // 対象の案件を取得
+    // 対象の案件を取得（現在の接頭辞も一緒に）
     const target = await sql`
-      SELECT id, ad_number FROM projects WHERE id = ${id}
+      SELECT id, prefix, ad_number FROM projects WHERE id = ${id}
     `;
     if (target.length === 0) {
       return Response.json({ error: "案件が見つかりません" }, { status: 404 });
     }
 
     const current = target[0];
+    const oldPrefix = current.prefix || "AD";
     const oldAdNumber = current.ad_number;
 
-    // 変更が無ければそのまま返す
-    if (Number(oldAdNumber) === newAdNumber) {
+    // 新しい接頭辞：body.prefix が来ていればそれ、なければ今の接頭辞を維持
+    const newPrefix = body.prefix !== undefined && body.prefix !== null
+      ? normalizePrefix(body.prefix)
+      : oldPrefix;
+
+    // 接頭辞も番号も変わっていなければそのまま返す
+    if (oldPrefix === newPrefix && Number(oldAdNumber) === newAdNumber) {
       return Response.json(
-        { message: "番号は変わっていません", ad_number: newAdNumber },
+        { message: "番号は変わっていません", prefix: newPrefix, ad_number: newAdNumber },
         { status: 200 },
       );
     }
 
-    // 重複チェック：他の案件が同じ番号を使っていないか
+    // 重複チェック：他の案件が同じ「接頭辞 + 番号」を使っていないか
     const duplicate = await sql`
       SELECT id FROM projects
-      WHERE ad_number = ${newAdNumber} AND id <> ${id}
+      WHERE prefix = ${newPrefix} AND ad_number = ${newAdNumber} AND id <> ${id}
     `;
     if (duplicate.length > 0) {
       return Response.json(
         {
-          error: `案件番号 ${newAdNumber} は、すでに別の案件で使われています`,
+          error: `案件番号 ${newPrefix}-${newAdNumber} は、すでに別の案件で使われています`,
           conflictProjectId: duplicate[0].id,
         },
         { status: 409 },
@@ -61,22 +69,27 @@ export async function PUT(request, { params }) {
     // 変更を実行
     const updated = await sql`
       UPDATE projects
-      SET ad_number = ${newAdNumber},
+      SET prefix = ${newPrefix},
+          ad_number = ${newAdNumber},
           updated_at = NOW()
       WHERE id = ${id}
       RETURNING *
     `;
 
     // ログに記録
+    const oldLabel = `${oldPrefix}-${oldAdNumber ?? "未設定"}`;
+    const newLabel = `${newPrefix}-${newAdNumber}`;
     await sql`
       INSERT INTO project_activities (project_id, activity_type, description)
-      VALUES (${id}, 'update', ${`案件番号を変更（${oldAdNumber ?? "未設定"} → ${newAdNumber}）`})
+      VALUES (${id}, 'update', ${`案件番号を変更（${oldLabel} → ${newLabel}）`})
     `;
 
     return Response.json(
       {
         message: "案件番号を変更しました",
+        oldPrefix,
         oldAdNumber,
+        newPrefix,
         newAdNumber,
         project: updated[0],
       },

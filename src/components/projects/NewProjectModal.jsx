@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { X, ChevronDown } from "lucide-react";
 import { useCreateProject } from "@/hooks/useCreateProject";
+import { PROJECT_PREFIXES, DEFAULT_PREFIX } from "@/lib/prefixes";
 
 // 2か月後の日付を取得する関数
 const getTwoMonthsLater = () => {
@@ -11,6 +12,7 @@ const getTwoMonthsLater = () => {
 };
 
 const INITIAL_FORM_DATA = {
+  prefix: DEFAULT_PREFIX,
   ad_number: "",
   project_name: "",
   client_name: "",
@@ -125,21 +127,32 @@ export const NewProjectModal = ({
 }, [formData, contractors, activeContractorField]);
 
 
-  // 次のAD番号を取得する関数
-  const fetchNextAdNumber = async () => {
+  // 次の案件番号を取得する関数（接頭辞ごとに独立採番）
+  const fetchNextAdNumber = async (prefix = DEFAULT_PREFIX) => {
     try {
       setIsLoadingAdNumber(true);
-      const response = await fetch("/api/projects/next-ad-number");
+      const response = await fetch(
+        `/api/projects/next-ad-number?prefix=${encodeURIComponent(prefix)}`,
+      );
       if (!response.ok) {
-        throw new Error("AD番号の取得に失敗しました");
+        throw new Error("案件番号の取得に失敗しました");
       }
       const data = await response.json();
       return data.nextAdNumber;
     } catch (error) {
-      console.error("AD番号の取得エラー:", error);
+      console.error("案件番号の取得エラー:", error);
       return "";
     } finally {
       setIsLoadingAdNumber(false);
+    }
+  };
+
+  // 接頭辞を切り替えたら、その接頭辞の次の番号を取り直す（新規作成時のみ）
+  const handlePrefixChange = async (newPrefix) => {
+    setFormData((prev) => ({ ...prev, prefix: newPrefix }));
+    if (!isEditing) {
+      const next = await fetchNextAdNumber(newPrefix);
+      setFormData((prev) => ({ ...prev, ad_number: (next || "").toString() }));
     }
   };
 
@@ -154,6 +167,7 @@ export const NewProjectModal = ({
       if (editProject) {
         // 編集モード：既存データを設定
         setFormData({
+          prefix: editProject.prefix || DEFAULT_PREFIX,
           ad_number: editProject.ad_number || "",
           project_name: editProject.project_name || "",
           client_name: editProject.client_name || "",
@@ -185,7 +199,7 @@ export const NewProjectModal = ({
       } else {
         // 新規作成モード：担当者情報と次のAD番号を取得
         const initializeForm = async () => {
-          const nextAdNumber = await fetchNextAdNumber();
+          const nextAdNumber = await fetchNextAdNumber(DEFAULT_PREFIX);
 
           let assignedTeamMember = null;
 
@@ -235,6 +249,7 @@ export const NewProjectModal = ({
 
           setFormData((prev) => ({
             ...prev,
+            prefix: DEFAULT_PREFIX,
             ad_number: nextAdNumber.toString(),
             assigned_team_member: assignedTeamMember,
             delivery_date: "", // 空文字列に変更
@@ -382,18 +397,33 @@ export const NewProjectModal = ({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                AD番号 <span className="text-red-500">*</span>
+                案件番号 <span className="text-red-500">*</span>
               </label>
-              <input
-                type="number"
-                value={formData.ad_number}
-                onChange={(e) => handleInputChange("ad_number", e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                placeholder="例: 12345"
-                required
-              />
+              <div className="flex gap-2">
+                <select
+                  value={formData.prefix}
+                  onChange={(e) => handlePrefixChange(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                >
+                  {PROJECT_PREFIXES.map((p) => (
+                    <option key={p} value={p}>
+                      {p}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  type="number"
+                  value={formData.ad_number}
+                  onChange={(e) => handleInputChange("ad_number", e.target.value)}
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                  placeholder="例: 12345"
+                  required
+                />
+              </div>
               <p className="text-xs text-gray-500 mt-1">
-                表示時は「AD-12345」となります
+                {isLoadingAdNumber
+                  ? "次の番号を取得中..."
+                  : `表示時は「${formData.prefix}-${formData.ad_number || "12345"}」となります`}
               </p>
             </div>
 

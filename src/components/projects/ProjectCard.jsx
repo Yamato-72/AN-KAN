@@ -176,7 +176,7 @@ export const ProjectCard = ({
             {project.ad_number && (
               <div className="flex items-center gap-2 text-sm text-gray-600">
                 <FileText className="h-4 w-4 text-gray-400 flex-shrink-0" />
-                <span className="font-medium">AD-{project.ad_number}</span>
+                <span className="font-medium">{project.prefix || "AD"}-{project.ad_number}</span>
               </div>
             )}
             <div className="flex items-center gap-2 text-sm text-gray-600">

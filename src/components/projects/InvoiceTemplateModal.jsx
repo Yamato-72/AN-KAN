@@ -36,7 +36,7 @@ export const InvoiceTemplateModal = ({
   const sendDate = getTodayFormatted();
   const paymentDueDate = getNextMonthEndDate();
 
-  const invoiceTemplate = `AD番号：AD-${project?.ad_number || ""}
+  const invoiceTemplate = `案件番号：${project?.prefix || "AD"}-${project?.ad_number || ""}
 顧客正式名：${project?.client_name || ""}
 請求先住所、部署、担当者名（担当者名があれば）：${getBillingAddress()}
 請求書送付希望日または発行希望日：${sendDate}
