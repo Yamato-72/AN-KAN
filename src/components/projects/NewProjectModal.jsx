@@ -3,6 +3,9 @@ import { X, ChevronDown } from "lucide-react";
 import { useCreateProject } from "@/hooks/useCreateProject";
 import { PROJECT_PREFIXES, DEFAULT_PREFIX, formatProjectNumber } from "@/lib/prefixes";
 
+// 今日の日付を YYYY-MM-DD で返す（問い合わせ日の初期値に使う）
+const getToday = () => new Date().toISOString().split("T")[0];
+
 // 2か月後の日付を取得する関数
 const getTwoMonthsLater = () => {
   const today = new Date();
@@ -310,6 +313,7 @@ export const NewProjectModal = ({
             prefix: DEFAULT_PREFIX,
             ad_number: nextAdNumber.toString(),
             related_project_id: null,
+            inquiry_date: getToday(),
             assigned_team_member: assignedTeamMember,
             delivery_date: "", // 空文字列に変更
           }));
