@@ -6,6 +6,7 @@ import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { NewProjectModal } from "@/components/projects/NewProjectModal";
 import { ProjectLogs } from "@/components/projects/ProjectLogs";
 import { ProjectPayments } from "@/components/projects/ProjectPayments";
+import { ProjectDepositStatus } from "@/components/projects/ProjectDepositStatus";
 import { ProjectBreadcrumbs } from "@/components/projects/ProjectBreadcrumbs";
 import { ProjectDetailHeader } from "@/components/projects/ProjectDetailHeader";
 import { ProjectBasicInfo } from "@/components/projects/ProjectBasicInfo";
@@ -324,8 +325,8 @@ const handleToggleLost = async () => {
 
         {activeTab === "payments" && (
           <div className="space-y-6">
-            {/* 支払いログセクション */}
-            <ProjectPayments projectId={project.id} />
+            {/* 支払いログ（支払ナビの発注デポジット状況を表示） */}
+            <ProjectDepositStatus projectId={project.id} />
           </div>
         )}
 
