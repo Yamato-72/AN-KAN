@@ -1,7 +1,11 @@
-import { ArrowLeft, ExternalLink } from "lucide-react";
+import { useState } from "react";
+import { ArrowLeft, ExternalLink, Pencil } from "lucide-react";
 import { getStatusColor } from "@/utils/statusColors";
+import { EditProjectNumberModal } from "@/components/projects/EditProjectNumberModal";
 
 export function ProjectDetailHeader({ project, onBack }) {
+  const [showNumberModal, setShowNumberModal] = useState(false);
+
   return (
     <div className="bg-white rounded-lg shadow mb-6">
       <div className="px-6 py-4 border-b border-gray-200">
@@ -32,9 +36,19 @@ export function ProjectDetailHeader({ project, onBack }) {
                 </a>
               )}
             </div>
-            <p className="text-sm text-gray-600">
-              {project.prefix || "AD"}-{project.ad_number || project.id}
-            </p>
+            <div className="flex items-center gap-2">
+              <p className="text-sm text-gray-600">
+                {project.prefix || "AD"}-{project.ad_number || project.id}
+              </p>
+              <button
+                onClick={() => setShowNumberModal(true)}
+                className="inline-flex items-center gap-1 px-2 py-0.5 text-xs text-gray-500 hover:text-blue-700 hover:bg-blue-50 border border-gray-200 rounded transition-colors"
+                title="案件番号を変更（AD→TSなど）"
+              >
+                <Pencil size={12} />
+                変更
+              </button>
+            </div>
           </div>
           <span
             className={`px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(project.status)}`}
@@ -43,6 +57,16 @@ export function ProjectDetailHeader({ project, onBack }) {
           </span>
         </div>
       </div>
+
+      <EditProjectNumberModal
+        show={showNumberModal}
+        onClose={() => setShowNumberModal(false)}
+        project={project}
+        onSuccess={() => {
+          // 番号変更は稀な操作なので、確実に反映させるため画面を再読込
+          window.location.reload();
+        }}
+      />
     </div>
   );
 }
