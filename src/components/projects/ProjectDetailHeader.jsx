@@ -1,10 +1,12 @@
 import { useState } from "react";
-import { ArrowLeft, ExternalLink, Pencil } from "lucide-react";
+import { ArrowLeft, ExternalLink, Pencil, PackagePlus } from "lucide-react";
 import { getStatusColor } from "@/utils/statusColors";
 import { EditProjectNumberModal } from "@/components/projects/EditProjectNumberModal";
+import { IssueServiceModal } from "@/components/projects/IssueServiceModal";
 
 export function ProjectDetailHeader({ project, onBack }) {
   const [showNumberModal, setShowNumberModal] = useState(false);
+  const [showIssueModal, setShowIssueModal] = useState(false);
 
   return (
     <div className="bg-white rounded-lg shadow mb-6">
@@ -48,6 +50,16 @@ export function ProjectDetailHeader({ project, onBack }) {
                 <Pencil size={12} />
                 変更
               </button>
+              {(project.prefix || "AD") === "TS" && (
+                <button
+                  onClick={() => setShowIssueModal(true)}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 text-xs text-emerald-700 hover:text-white hover:bg-emerald-600 border border-emerald-200 rounded transition-colors"
+                  title="在庫ナビへサービス発券"
+                >
+                  <PackagePlus size={12} />
+                  在庫ナビへ発券
+                </button>
+              )}
             </div>
           </div>
           <span
@@ -64,6 +76,16 @@ export function ProjectDetailHeader({ project, onBack }) {
         project={project}
         onSuccess={() => {
           // 番号変更は稀な操作なので、確実に反映させるため画面を再読込
+          window.location.reload();
+        }}
+      />
+
+      <IssueServiceModal
+        show={showIssueModal}
+        onClose={() => setShowIssueModal(false)}
+        project={project}
+        onSuccess={() => {
+          // 発券結果を活動ログに反映させるため再読込
           window.location.reload();
         }}
       />
