@@ -1,8 +1,16 @@
 import { useState, useEffect } from "react";
 import { X } from "lucide-react";
 
+// 受注日（=今日）の1.5か月後（45日後）を YYYY-MM-DD で返す
+const getDefaultDeliveryDate = () => {
+  const d = new Date();
+  d.setDate(d.getDate() + 45);
+  return d.toISOString().split("T")[0];
+};
+
 export const DeliveryDateModal = ({ show, onConfirm, onCancel, project }) => {
   const [deliveryDate, setDeliveryDate] = useState("");
+  const [autoDefault, setAutoDefault] = useState(""); // 自動設定した日付（注釈表示の判定用）
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -11,7 +19,15 @@ export const DeliveryDateModal = ({ show, onConfirm, onCancel, project }) => {
       const existingDate = project.delivery_date
         ? new Date(project.delivery_date).toISOString().split("T")[0]
         : "";
-      setDeliveryDate(existingDate);
+      if (existingDate) {
+        setDeliveryDate(existingDate);
+        setAutoDefault("");
+      } else {
+        // 指定がなければ受注日の1.5か月後（45日後）を自動セット
+        const def = getDefaultDeliveryDate();
+        setDeliveryDate(def);
+        setAutoDefault(def);
+      }
       setError("");
     }
   }, [show, project]);
@@ -30,11 +46,13 @@ export const DeliveryDateModal = ({ show, onConfirm, onCancel, project }) => {
 
   const handleClose = () => {
     setDeliveryDate("");
+    setAutoDefault("");
     setError("");
     onCancel();
   };
 
   const isFormValid = deliveryDate.trim() !== "";
+  const isAutoValue = autoDefault !== "" && deliveryDate === autoDefault;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -54,7 +72,7 @@ export const DeliveryDateModal = ({ show, onConfirm, onCancel, project }) => {
         <div className="space-y-4">
           <div>
             <p className="text-sm text-gray-600 mb-4">
-              受注を確定する前に納期を設定してください。
+              受注を確定する前に納期を確認してください。
             </p>
 
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -71,6 +89,11 @@ export const DeliveryDateModal = ({ show, onConfirm, onCancel, project }) => {
                 error ? "border-red-300 bg-red-50" : "border-gray-300"
               }`}
             />
+            {isAutoValue && (
+              <p className="mt-1 text-xs text-gray-500">
+                ※日程の指定がない場合は、受注日の1.5か月後を自動で設定しています
+              </p>
+            )}
             {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
           </div>
 
@@ -98,6 +121,3 @@ export const DeliveryDateModal = ({ show, onConfirm, onCancel, project }) => {
     </div>
   );
 };
-
-
-
