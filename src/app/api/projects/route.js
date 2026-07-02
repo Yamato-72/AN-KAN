@@ -1,6 +1,6 @@
 import { query } from "@/lib/db";
 import { createGoogleDriveFolder } from "@/app/api/utils/googleDrive";
-import { normalizePrefix, initialStatusFor } from "@/lib/prefixes";
+import { normalizePrefix, initialStatusFor, formatProjectNumber } from "@/lib/prefixes";
 
 export async function GET(request) {
   try {
@@ -347,7 +347,7 @@ export async function POST(request) {
     let driveFolderLink = null;
 
     try {
-      const folderName = `${project.prefix || "AD"}-${project.ad_number}`;
+      const folderName = formatProjectNumber(project.prefix, project.ad_number); // TS/SPは4桁ゼロ埋め（例 TS-0071）、ADは従来通り
       const driveResult = await createGoogleDriveFolder(folderName);
 
       if (
