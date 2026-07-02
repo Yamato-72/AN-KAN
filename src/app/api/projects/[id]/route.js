@@ -93,6 +93,7 @@ export async function PUT(request, { params }) {
       address,
       phone_number,
       estimated_amount,
+      revenue,
       company_address,
       contact_person,
       email,
@@ -279,6 +280,11 @@ export async function PUT(request, { params }) {
       paramCount++;
       updates.push(`estimated_amount = $${paramCount}`);
       values.push(estimated_amount ? parseFloat(estimated_amount) : null);
+    }
+    if (revenue !== undefined) {
+      paramCount++;
+      updates.push(`revenue = $${paramCount}`);
+      values.push(revenue ? parseFloat(revenue) : null);
     }
 
     // Update client_id if changed
