@@ -52,7 +52,7 @@ export async function sendOrderAlert(project, actor) {
   const base = process.env.ANKAN_PROJECT_URL_BASE;
   const link = base ? `\n\n案件を開く: ${base.replace(/\/$/, "")}/${project.id}` : "";
 
-  const subject = `【受注】${number} ${client} - 調達確認のお願い`;
+  const subject = `【発注依頼】${number} ${client}`;
   const text =
     `受注が確定しました。調達の確認をお願いします。\n\n` +
     `案件番号: ${number}\n` +
