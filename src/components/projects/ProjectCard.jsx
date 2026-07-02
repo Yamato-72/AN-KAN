@@ -164,12 +164,6 @@ export const ProjectCard = ({
               <h3 className="text-base lg:text-lg font-semibold text-gray-700 mb-2 leading-snug hover:text-blue-600 transition-colors">
                 {project.client_name}
               </h3>
-              <div
-                className={`inline-flex items-center gap-1 px-2 lg:px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(project.status)}`}
-              >
-                {getStatusIcon(project.status)}
-                {getStatusText(project.status)}
-              </div>
             </div>
           </div>
 

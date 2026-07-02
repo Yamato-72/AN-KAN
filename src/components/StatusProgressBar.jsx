@@ -257,24 +257,23 @@ export const StatusProgressBar = ({
           const isClickable = canRevert || canAdvance;
 
           // 色とスタイルの決定
+          //   今ココ（現在）＝はっきり光る本来の色
+          //   終わった段階＝グレー（チェック表示）
+          //   これから＝薄く
           let buttonStyle = "";
           let textStyle = "";
 
-          if (isCompleted || isCurrent) {
-            // 完了済み・現在：指定されたグレー色（リングなし）
-            buttonStyle = "bg-[#89909c]";
-            textStyle = "text-gray-700";
-          } else if (isNext) {
-            // 次のステップ：鮮やかな本来の色
+          if (isCurrent) {
+            // 今ココ：鮮やかな本来の色でくっきり
             buttonStyle = step.color;
-            textStyle = "text-gray-700";
-          } else if (isFuture) {
-            // 未来のステップ：本来の色 + グレーオーバーレイ
-            buttonStyle = `${step.color} relative after:absolute after:inset-0 after:bg-gray-400 after:opacity-60 after:rounded-full`;
-            textStyle = "text-gray-400";
+            textStyle = "text-gray-900 font-semibold";
+          } else if (isCompleted) {
+            // 完了済み：グレー（チェック）
+            buttonStyle = "bg-[#89909c]";
+            textStyle = "text-gray-500";
           } else {
-            // フォールバック
-            buttonStyle = "bg-gray-300";
+            // これから（次・未来）：本来の色を薄く
+            buttonStyle = `${step.color} opacity-30`;
             textStyle = "text-gray-400";
           }
 
@@ -299,17 +298,17 @@ export const StatusProgressBar = ({
                         : ""
                 }
               >
-                {/* NEXT吹き出し - 次のステップにのみ表示 */}
-                {isNext && !disabled && (
+                {/* 今ココ吹き出し - 現在のステップにのみ表示 */}
+                {isCurrent && !disabled && (
                   <div className="absolute -top-7 left-1/2 transform -translate-x-1/2 bg-white text-black text-[8px] font-medium px-1.5 py-0.5 rounded whitespace-nowrap shadow-md border border-gray-300">
-                    NEXT！
+                    今ココ
                     <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-[3px] border-r-[3px] border-t-[3px] border-l-transparent border-r-transparent border-t-white"></div>
                   </div>
                 )}
 
                 {updateProjectStatus.isPending && isCurrent ? (
                   <div className="animate-spin w-3 h-3 border border-white border-t-transparent rounded-full"></div>
-                ) : isCompleted || isCurrent ? (
+                ) : isCompleted ? (
                   <Check className="h-3 w-3" />
                 ) : (
                   <IconComponent className="h-3 w-3" />
