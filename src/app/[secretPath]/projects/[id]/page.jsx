@@ -268,6 +268,19 @@ const handleToggleLost = async () => {
         {/* ヘッダー部分 */}
         <ProjectDetailHeader project={project} onBack={handleBack} />
 
+        {/* アクションボタン（上部に配置・スクロール不要でどのタブでも表示） */}
+        <div className="mb-6">
+          <ProjectActionButtons
+            canPass={canPass}
+            onEdit={() => setShowEditModal(true)}
+            onPass={() => setShowPassModal(true)}
+            onLost={handleToggleLost}
+            onHold={handleToggleHold}
+            isLost={project.lost_flag}
+            isHold={project.hold_flag}
+          />
+        </div>
+
         {/* タブナビゲーション */}
         <div className="mt-6 mb-6">
           <div className="border-b border-gray-200">
@@ -299,19 +312,6 @@ const handleToggleLost = async () => {
               <ProjectBasicInfo project={project} />
               {/* クライアント情報 */}
               <ProjectClientInfo project={project} />
-            </div>
-
-            {/* アクションボタン */}
-            <div className="mb-20">
-              <ProjectActionButtons
-                canPass={canPass}
-                onEdit={() => setShowEditModal(true)}
-                onPass={() => setShowPassModal(true)}
-                onLost={handleToggleLost}
-                onHold={handleToggleHold}
-                isLost={project.lost_flag}
-                isHold={project.hold_flag}
-              />
             </div>
           </div>
         )}
