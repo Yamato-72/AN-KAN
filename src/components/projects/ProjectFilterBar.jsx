@@ -7,9 +7,7 @@ export const filterOptions = [
   { key: "リード", label: "リード" }, // リードを個別フィルターとして追加
   { key: "打ち合わせ中", label: "打ち合わせ中" },
   { key: "受注済み", label: "受注済み" },
-  { key: "国際発注済", label: "国際発注済" },
-  { key: "設置手配済", label: "設置手配済" },
-  { key: "設置完了", label: "設置完了" },
+  { key: "手配中", label: "手配中" },
   { key: "残金請求済", label: "残金請求済" },
   { key: "trouble", label: "トラブル" },
 ];

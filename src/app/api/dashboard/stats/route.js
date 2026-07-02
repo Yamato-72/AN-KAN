@@ -14,9 +14,7 @@ export async function GET(request) {
       COUNT(*) as total_projects,
       COUNT(CASE WHEN status = '打ち合わせ中' THEN 1 END) as meeting_projects,
       COUNT(CASE WHEN status = '受注済み' THEN 1 END) as ordered_projects,
-      COUNT(CASE WHEN status = '国際発注済' THEN 1 END) as international_ordered_projects,
-      COUNT(CASE WHEN status = '設置手配済' THEN 1 END) as installation_arranged_projects,
-      COUNT(CASE WHEN status = '設置完了' THEN 1 END) as installation_completed_projects,
+      COUNT(CASE WHEN status = '手配中' THEN 1 END) as arranging_projects,
       COUNT(CASE WHEN status = '残金請求済' THEN 1 END) as payment_completed_projects,
       COUNT(CASE WHEN trouble_flag = true THEN 1 END) as trouble_projects,
       COALESCE(SUM(estimated_amount), 0) as total_budget,
@@ -97,7 +95,7 @@ export async function GET(request) {
     // Get monthly project completion trend (last 6 months)
     let completionTrendQuery = `SELECT 
          DATE_TRUNC('month', created_at) as month,
-         COUNT(CASE WHEN status = '設置完了' OR status = '残金請求済' THEN 1 END) as completed_count
+         COUNT(CASE WHEN status = '残金請求済' THEN 1 END) as completed_count
        FROM projects
        WHERE created_at >= NOW() - INTERVAL '6 months'`;
 
@@ -132,12 +130,7 @@ export async function GET(request) {
       totalProjects: Number(projectData.total_projects) || 0,
       meetingProjects: Number(projectData.meeting_projects) || 0,
       orderedProjects: Number(projectData.ordered_projects) || 0,
-      internationalOrderedProjects:
-        Number(projectData.international_ordered_projects) || 0,
-      installationArrangedProjects:
-        Number(projectData.installation_arranged_projects) || 0,
-      installationCompletedProjects:
-        Number(projectData.installation_completed_projects) || 0,
+      arrangingProjects: Number(projectData.arranging_projects) || 0,
       paymentCompletedProjects:
         Number(projectData.payment_completed_projects) || 0,
       troubleProjects: Number(projectData.trouble_projects) || 0,

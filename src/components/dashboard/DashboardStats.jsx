@@ -41,15 +41,13 @@ export const DashboardStats = ({ stats, selectedFilter, onFilterChange }) => {
   if (!stats) {
     return (
       <div className="px-4 lg:pl-24">
-        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-7 gap-4 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4 mb-8">
           {[
-            "トラブル",
             "打ち合わせ中",
             "受注済み",
-            "国際発注済",
-            "設置手配済",
-            "設置完了",
+            "手配中",
             "残金請求済",
+            "トラブル",
           ].map((title, index) => (
             <div
               key={index}
@@ -83,15 +81,7 @@ export const DashboardStats = ({ stats, selectedFilter, onFilterChange }) => {
 
   return (
     <div className="px-4 lg:pl-24">
-      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-7 gap-4 mb-8">
-        <StatCard
-          title="トラブル"
-          value={stats.troubleProjects || 0}
-          icon={AlertTriangle}
-          colorClass="text-yellow-600"
-          isActive={selectedFilter === "trouble"}
-          onClick={() => handleStatClick("trouble")}
-        />
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4 mb-8">
         <StatCard
           title="打ち合わせ中"
           value={stats.meetingProjects || 0}
@@ -109,28 +99,12 @@ export const DashboardStats = ({ stats, selectedFilter, onFilterChange }) => {
           onClick={() => handleStatClick("受注済み")}
         />
         <StatCard
-          title="国際発注済"
-          value={stats.internationalOrderedProjects || 0}
-          icon={Zap}
-          colorClass="text-purple-600"
-          isActive={selectedFilter === "国際発注済"}
-          onClick={() => handleStatClick("国際発注済")}
-        />
-        <StatCard
-          title="設置手配済"
-          value={stats.installationArrangedProjects || 0}
+          title="手配中"
+          value={stats.arrangingProjects || 0}
           icon={PlayCircle}
           colorClass="text-orange-600"
-          isActive={selectedFilter === "設置手配済"}
-          onClick={() => handleStatClick("設置手配済")}
-        />
-        <StatCard
-          title="設置完了"
-          value={stats.installationCompletedProjects || 0}
-          icon={CheckCircle}
-          colorClass="text-emerald-600"
-          isActive={selectedFilter === "設置完了"}
-          onClick={() => handleStatClick("設置完了")}
+          isActive={selectedFilter === "手配中"}
+          onClick={() => handleStatClick("手配中")}
         />
         <StatCard
           title="残金請求済"
@@ -139,6 +113,14 @@ export const DashboardStats = ({ stats, selectedFilter, onFilterChange }) => {
           colorClass="text-gray-600"
           isActive={selectedFilter === "残金請求済"}
           onClick={() => handleStatClick("残金請求済")}
+        />
+        <StatCard
+          title="トラブル"
+          value={stats.troubleProjects || 0}
+          icon={AlertTriangle}
+          colorClass="text-yellow-600"
+          isActive={selectedFilter === "trouble"}
+          onClick={() => handleStatClick("trouble")}
         />
       </div>
     </div>

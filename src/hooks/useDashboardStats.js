@@ -35,6 +35,7 @@ export const useDashboardStats = (assignedTeamMemberId = null) => {
         totalProjects: Number(data.totalProjects) || 0,
         meetingProjects: Number(data.meetingProjects) || 0,
         orderedProjects: Number(data.orderedProjects) || 0,
+        arrangingProjects: Number(data.arrangingProjects) || 0,
         internationalOrderedProjects:
           Number(data.internationalOrderedProjects) || 0,
         installationArrangedProjects:
@@ -61,6 +62,7 @@ export const useDashboardStats = (assignedTeamMemberId = null) => {
       totalProjects: 0,
       meetingProjects: 0,
       orderedProjects: 0,
+      arrangingProjects: 0,
       internationalOrderedProjects: 0,
       installationArrangedProjects: 0,
       installationCompletedProjects: 0,
