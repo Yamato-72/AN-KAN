@@ -296,12 +296,13 @@ export async function POST(request) {
         estimated_amount,
         status,
         related_project_id,
+        trouble_flag,
         created_at,
         updated_at
       ) VALUES (
         $1, $2, $3, $4, $5,
         $6, $7, $8, $9, $10,
-        $11, $12, $13, $14, $15, $16, NOW(), NOW()
+        $11, $12, $13, $14, $15, $16, $17, NOW(), NOW()
       )
       RETURNING *
       `,
@@ -322,6 +323,7 @@ export async function POST(request) {
         estimated_amount ? parseFloat(estimated_amount) : null,
         "リード",
         related_project_id ? parseInt(related_project_id) : null,
+        normalizedPrefix === "TS", // TSはトラブルとして初期オン。AD/SPはfalse
       ]
     );
 
