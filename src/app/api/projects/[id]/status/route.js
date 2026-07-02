@@ -1,5 +1,4 @@
 import sql from "@/app/api/utils/sql";
-import { sendOrderAlert } from "@/app/api/utils/mailer";
 
 // ステータスの順序を定義（7段階→5段階に集約）
 //   旧「国際発注済/設置手配済/設置完了」を「手配中」ひとつに畳んだ
@@ -282,29 +281,10 @@ export async function PUT(request, { params }) {
       VALUES (${id}, 'status_update', ${activityDescription})
     `;
 
-    // === 受注アラート（初回の「受注済み」到達時のみ、調達グループへメール）===
-    //   - order_alert_sent が false のときだけ送る（二重通知を防ぐ）
-    //   - 送信可否に関わらずステータス更新は成立させる（メール失敗で業務を止めない）
-    if (newStatus === "受注済み" && project[0].order_alert_sent === false) {
-      try {
-        const sent = await sendOrderAlert(
-          {
-            id: updatedProject[0].id,
-            prefix: updatedProject[0].prefix,
-            ad_number: updatedProject[0].ad_number,
-            project_name: updatedProject[0].project_name,
-            resolved_client_name: project[0].resolved_client_name,
-          },
-          body.actor || null,
-        );
-        if (sent) {
-          await sql`UPDATE projects SET order_alert_sent = true WHERE id = ${id}`;
-        }
-      } catch (mailErr) {
-        console.error("[order-alert] 予期せぬエラー:", mailErr);
-        // 握りつぶす（ステータス更新は成功として返す）
-      }
-    }
+    // === 受注アラート（メール通知）は次回に持ち越し ===
+    //   nodemailer をビルドに含めるには package-lock.json の更新が必要なため、
+    //   いったん無効化。受注時にメールを送る仕組みは次回きれいに再導入する。
+    //   （order_alert_sent 列・mailer.js は温存。呼び出しだけ止めている）
 
     // 残金請求済に変更された場合は特別なメッセージ
     let responseMessage = `ステータスが「${newStatus}」に更新されました`;
