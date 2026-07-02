@@ -1,9 +1,11 @@
 import sql from "@/app/api/utils/sql";
 import { sendOrderAlert } from "@/app/api/utils/mailer";
 
-// ステータスの順序を定義（7段階→5段階に集約）
-//   旧「国際発注済/設置手配済/設置完了」を「手配中」ひとつに畳んだ
+// ステータスの順序（画面の進捗バー STATUS_STEPS と完全一致させる）
+//   ここに「リード」が無いと、進捗バーの番号とサーバの番号が1つズレて、
+//   next/previous の遷移先が食い違う。必ず画面側と同じ並び・同じ数にする。
 const STATUS_ORDER = [
+  "リード",
   "打ち合わせ中",
   "受注済み",
   "手配中",
