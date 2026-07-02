@@ -60,7 +60,9 @@ export const StatusProgressBar = ({
       return;
     }
 
-    // 国際発注済 → 設置手配済 の遷移の場合は、先に設置情報入力モーダルを表示
+    // （旧）国際発注済 → 設置手配済 の設置情報モーダル。
+    //   5段階化で「国際発注済」ステータスは廃止。この分岐はもう発火しない（残置・無害）。
+    //   設置業者は案件詳細から編集で記入する運用に変更。
     if (currentStatus === "国際発注済") {
       const contractorValue = project?.installation_contractor || "";
       const dateValue = project?.installation_date
@@ -75,8 +77,9 @@ export const StatusProgressBar = ({
       return;
     }
 
-    // 設置完了 → 残金請求済 の遷移の場合は、先に請求書テンプレートモーダルを表示
-    if (currentStatus === "設置完了") {
+    // 手配中 → 完了（残金請求済）の遷移で、請求書テンプレートモーダルを表示
+    //   （旧フローでは「設置完了」がこの起点だった。5段階化で「手配中」に変更）
+    if (currentStatus === "手配中") {
       setShowInvoiceModal(true);
       return;
     }

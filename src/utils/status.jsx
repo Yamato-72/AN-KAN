@@ -17,6 +17,8 @@ export const getStatusColor = (status) => {
       return "bg-blue-100 text-blue-700 border-blue-200";
     case "受注済み":
       return "bg-green-100 text-green-700 border-green-200";
+    case "手配中":
+      return "bg-orange-100 text-orange-700 border-orange-200";
     case "国際発注済":
       return "bg-purple-100 text-purple-700 border-purple-200";
     case "設置手配済":
@@ -38,6 +40,8 @@ export const getStatusIcon = (status) => {
       return <FileText className="h-4 w-4" />;
     case "受注済み":
       return <CheckCircle className="h-4 w-4" />;
+    case "手配中":
+      return <PlayCircle className="h-4 w-4" />;
     case "国際発注済":
       return <Zap className="h-4 w-4" />;
     case "設置手配済":
@@ -56,6 +60,9 @@ export const getStatusText = (status) => {
 };
 
 // Status progress configuration
+//   7段階 → 5段階に集約。
+//   旧「国際発注済 / 設置手配済 / 設置完了」を「手配中」ひとつに畳む。
+//   両端（リード〜受注、完了）は従来どおり。完了は請求書テンプレを出すので必ず残す。
 export const STATUS_STEPS = [
   {
     key: "リード",
@@ -70,19 +77,7 @@ export const STATUS_STEPS = [
     icon: FileText,
   },
   { key: "受注済み", label: "受注", color: "bg-green-500", icon: CheckCircle },
-  { key: "国際発注済", label: "発注", color: "bg-purple-500", icon: Zap },
-  {
-    key: "設置手配済",
-    label: "手配",
-    color: "bg-orange-500",
-    icon: PlayCircle,
-  },
-  {
-    key: "設置完了",
-    label: "設置",
-    color: "bg-emerald-500",
-    icon: CheckCircle,
-  },
+  { key: "手配中", label: "手配中", color: "bg-orange-500", icon: PlayCircle },
   { key: "残金請求済", label: "完了", color: "bg-teal-500", icon: DollarSign },
 ];
 

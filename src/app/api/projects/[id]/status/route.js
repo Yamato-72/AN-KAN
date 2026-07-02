@@ -1,12 +1,12 @@
 import sql from "@/app/api/utils/sql";
+import { sendOrderAlert } from "@/app/api/utils/mailer";
 
-// ステータスの順序を定義
+// ステータスの順序を定義（7段階→5段階に集約）
+//   旧「国際発注済/設置手配済/設置完了」を「手配中」ひとつに畳んだ
 const STATUS_ORDER = [
   "打ち合わせ中",
   "受注済み",
-  "国際発注済",
-  "設置手配済",
-  "設置完了",
+  "手配中",
   "残金請求済",
 ];
 
@@ -281,6 +281,30 @@ export async function PUT(request, { params }) {
       INSERT INTO project_activities (project_id, activity_type, description)
       VALUES (${id}, 'status_update', ${activityDescription})
     `;
+
+    // === 受注アラート（初回の「受注済み」到達時のみ、調達グループへメール）===
+    //   - order_alert_sent が false のときだけ送る（二重通知を防ぐ）
+    //   - 送信可否に関わらずステータス更新は成立させる（メール失敗で業務を止めない）
+    if (newStatus === "受注済み" && project[0].order_alert_sent === false) {
+      try {
+        const sent = await sendOrderAlert(
+          {
+            id: updatedProject[0].id,
+            prefix: updatedProject[0].prefix,
+            ad_number: updatedProject[0].ad_number,
+            project_name: updatedProject[0].project_name,
+            resolved_client_name: project[0].resolved_client_name,
+          },
+          body.actor || null,
+        );
+        if (sent) {
+          await sql`UPDATE projects SET order_alert_sent = true WHERE id = ${id}`;
+        }
+      } catch (mailErr) {
+        console.error("[order-alert] 予期せぬエラー:", mailErr);
+        // 握りつぶす（ステータス更新は成功として返す）
+      }
+    }
 
     // 残金請求済に変更された場合は特別なメッセージ
     let responseMessage = `ステータスが「${newStatus}」に更新されました`;
