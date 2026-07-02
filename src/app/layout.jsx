@@ -20,6 +20,9 @@ const queryClient = new QueryClient({
 export default function RootLayout({ children }) {
   return (
     <html lang="ja">
+      <head>
+        <title>AN-KAN - YS案件管理</title>
+      </head>
       <body>
         <QueryClientProvider client={queryClient}>
           {children}
