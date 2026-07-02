@@ -22,6 +22,23 @@ export const PREFIX_NUMBER_FLOOR = {
   SP: 1000,
 };
 
+// 接頭辞ごとの「新規作成時の初期ステータス」
+//   TS（修理・現調・保守）と SP（在庫発注）は、性質上「リード」段階が
+//   存在しないため、最初から「打ち合わせ中」で作成する（すぐ受注に進める）。
+//   ここに載っていない接頭辞（AD など）は従来通り「リード」から。
+export const PREFIX_INITIAL_STATUS = {
+  TS: "打ち合わせ中",
+  SP: "打ち合わせ中",
+};
+
+export const DEFAULT_INITIAL_STATUS = "リード";
+
+// 接頭辞から初期ステータスを返す
+export function initialStatusFor(prefix) {
+  const p = normalizePrefix(prefix);
+  return PREFIX_INITIAL_STATUS[p] || DEFAULT_INITIAL_STATUS;
+}
+
 // 受け取った接頭辞を正規化する（大文字化＋許可リスト外はデフォルトに丸める）
 export function normalizePrefix(raw) {
   if (raw === null || raw === undefined) return DEFAULT_PREFIX;

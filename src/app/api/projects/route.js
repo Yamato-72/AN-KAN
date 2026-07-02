@@ -1,6 +1,6 @@
 import { query } from "@/lib/db";
 import { createGoogleDriveFolder } from "@/app/api/utils/googleDrive";
-import { normalizePrefix } from "@/lib/prefixes";
+import { normalizePrefix, initialStatusFor } from "@/lib/prefixes";
 
 export async function GET(request) {
   try {
@@ -321,7 +321,7 @@ export async function POST(request) {
         assignedCode,
         address || null,
         estimated_amount ? parseFloat(estimated_amount) : null,
-        "リード",
+        initialStatusFor(normalizedPrefix), // TS/SPは「打ち合わせ中」、ADは「リード」
         related_project_id ? parseInt(related_project_id) : null,
         normalizedPrefix === "TS", // TSはトラブルとして初期オン。AD/SPはfalse
       ]
