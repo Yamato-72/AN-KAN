@@ -48,7 +48,7 @@ export const SalesProgressBand = () => {
       <span className="text-[11px] font-semibold text-gray-500 whitespace-nowrap">
         第{data.periodNo}期売上
       </span>
-      <div className="flex-1 grid grid-cols-12 gap-[3px] min-w-[120px]">
+      <div className="grid grid-cols-12 gap-[3px] w-[180px] sm:w-[300px] flex-none">
         {Array.from({ length: 12 }).map((_, i) => {
           const w = Math.max(0, Math.min(1, frac - i)) * 100;
           return (
