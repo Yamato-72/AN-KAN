@@ -32,8 +32,10 @@ function formatNumber(prefix, num) {
 export async function GET() {
   const headers = { ...corsHeaders(), "Content-Type": "application/json" };
 
+  let step = "開始";
   try {
     // 1) ステータス別の件数（進行中のみ）
+    step = "ステータス集計";
     const statusRows = await sql`
       SELECT status, COUNT(*)::int AS count
       FROM projects
@@ -46,16 +48,18 @@ export async function GET() {
     });
 
     // 2) トラブル案件の件数
+    step = "トラブル集計";
     const troubleRows = await sql`
       SELECT COUNT(*)::int AS count
       FROM projects
-      WHERE is_trouble = true
+      WHERE trouble_flag = true
         AND lost_flag = false AND hold_flag = false
         AND status != '残金請求済'
     `;
 
     // 3) 納期アラート：納期が7日以内 or 超過しているのに完了していない案件
     //    （番号・納期・ステータスのみ返す）
+    step = "納期アラート集計";
     const deliveryRows = await sql`
       SELECT prefix, ad_number, delivery_date, status
       FROM projects
@@ -91,8 +95,14 @@ export async function GET() {
     );
   } catch (error) {
     console.error("ダッシュボード集計エラー:", error);
+    // デバッグしやすいよう、どの手順で・どんなエラーかを返す
+    // （テーブルの列名レベルの情報のみで、案件データは含まれない）
     return Response.json(
-      { error: "集計に失敗しました" },
+      {
+        error: "集計に失敗しました",
+        step,
+        detail: String(error && error.message ? error.message : error),
+      },
       { status: 500, headers },
     );
   }
