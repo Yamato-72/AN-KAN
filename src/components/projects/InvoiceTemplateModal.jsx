@@ -13,8 +13,6 @@ export const InvoiceTemplateModal = ({
   project,
 }) => {
   const [copied, setCopied] = useState(false);
-  const [revenue, setRevenue] = useState("");
-  const [error, setError] = useState("");
 
   if (!show) return null;
 
@@ -55,50 +53,16 @@ export const InvoiceTemplateModal = ({
     }
   };
 
-  const validateRevenue = (value) => {
-    if (!value || value.trim() === "") {
-      return "売上高は必須入力です";
-    }
-
-    const numValue = parseFloat(value);
-    if (isNaN(numValue)) {
-      return "売上高は数値で入力してください";
-    }
-
-    if (numValue < 0) {
-      return "売上高は0以上で入力してください";
-    }
-
-    return "";
-  };
-
-  const handleRevenueChange = (e) => {
-    const value = e.target.value;
-    setRevenue(value);
-
-    const validationError = validateRevenue(value);
-    setError(validationError);
-  };
-
   const handleConfirm = () => {
-    const validationError = validateRevenue(revenue);
-    if (validationError) {
-      setError(validationError);
-      return;
-    }
-
-    const numericRevenue = parseFloat(revenue);
-    onConfirm(numericRevenue);
+    onConfirm();
   };
 
   const handleClose = () => {
     setCopied(false);
-    setRevenue("");
-    setError("");
     onCancel();
   };
 
-  const isFormValid = revenue.trim() !== "" && !validateRevenue(revenue);
+  const isFormValid = true;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -116,28 +80,6 @@ export const InvoiceTemplateModal = ({
         </div>
 
         <div className="space-y-6">
-          {/* 売上高入力欄 */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              売上高（税抜き）（円）<span className="text-red-500 ml-1">*</span>
-            </label>
-            <input
-              type="number"
-              value={revenue}
-              onChange={handleRevenueChange}
-              placeholder="請求総額（税抜き）を入力してください"
-              className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                error ? "border-red-300 bg-red-50" : "border-gray-300"
-              }`}
-              min="0"
-              step="1"
-            />
-            {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
-            <p className="mt-1 text-xs text-gray-500">
-              ※ 売上高の入力は必須です（0円以上）
-            </p>
-          </div>
-
           {/* テンプレート表示 */}
           <div>
             <p className="text-sm text-gray-600 mb-3">

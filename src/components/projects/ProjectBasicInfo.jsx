@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import {
   FileText,
   User,
@@ -11,45 +10,11 @@ import {
   MapPin,
   Tag, // Add Tag icon for product number
   Link2, // 関連元案件のリンク用
-  Pencil, // 売上高の編集用
-  Check, // 保存
-  X, // キャンセル
 } from "lucide-react";
 import { formatDate, formatDateTime } from "@/utils/dateFormatters";
 import { formatProjectNumber } from "@/lib/prefixes";
 
 export function ProjectBasicInfo({ project }) {
-  // 売上高のインライン編集用
-  const [editingRevenue, setEditingRevenue] = useState(false);
-  const [revenueValue, setRevenueValue] = useState(project.revenue ?? "");
-  const [displayRevenue, setDisplayRevenue] = useState(project.revenue);
-  const [savingRevenue, setSavingRevenue] = useState(false);
-
-  const saveRevenue = async () => {
-    setSavingRevenue(true);
-    try {
-      const res = await fetch(`/api/projects/${project.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          revenue: revenueValue === "" ? null : revenueValue,
-        }),
-      });
-      if (!res.ok) throw new Error();
-      setDisplayRevenue(revenueValue === "" ? null : revenueValue);
-      setEditingRevenue(false);
-    } catch {
-      alert("売上高の保存に失敗しました。時間をおいて再度お試しください。");
-    } finally {
-      setSavingRevenue(false);
-    }
-  };
-
-  const cancelRevenue = () => {
-    setRevenueValue(displayRevenue ?? "");
-    setEditingRevenue(false);
-  };
-
   return (
     <div className="lg:col-span-2 bg-white rounded-lg shadow">
       <div className="px-6 py-4 border-b border-gray-200">
@@ -160,50 +125,16 @@ export function ProjectBasicInfo({ project }) {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               <TrendingUp size={16} className="inline mr-2" />
-              売上高
+              実売上（支払ナビ連携）
             </label>
-            {editingRevenue ? (
-              <div className="flex items-center gap-2">
-                <span className="text-gray-500">¥</span>
-                <input
-                  type="number"
-                  value={revenueValue}
-                  onChange={(e) => setRevenueValue(e.target.value)}
-                  placeholder="金額を入力"
-                  className="border border-gray-300 rounded px-2 py-1 w-40 text-gray-900"
-                  autoFocus
-                />
-                <button
-                  onClick={saveRevenue}
-                  disabled={savingRevenue}
-                  className="p-1 text-green-600 hover:bg-green-50 rounded disabled:opacity-50"
-                  title="保存"
-                >
-                  <Check size={18} />
-                </button>
-                <button
-                  onClick={cancelRevenue}
-                  disabled={savingRevenue}
-                  className="p-1 text-gray-400 hover:bg-gray-100 rounded disabled:opacity-50"
-                  title="キャンセル"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-            ) : (
-              <p className="text-gray-900 flex items-center gap-2">
-                {displayRevenue
-                  ? `¥${Number(displayRevenue).toLocaleString()}`
-                  : "未設定"}
-                <button
-                  onClick={() => setEditingRevenue(true)}
-                  className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded"
-                  title="売上高を編集"
-                >
-                  <Pencil size={14} />
-                </button>
-              </p>
-            )}
+            <p className="text-gray-900">
+              {project.revenue
+                ? `¥${Number(project.revenue).toLocaleString()}`
+                : "未設定"}
+            </p>
+            <p className="text-xs text-gray-400 mt-0.5">
+              売上の編集は支払ナビの販売案件で行ってください（保存時に自動反映）
+            </p>
           </div>
 
           <div className="md:col-span-2">

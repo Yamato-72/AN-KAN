@@ -182,7 +182,7 @@ export const StatusProgressBar = ({
     setPendingInstallationData(null);
   };
 
-  const handleInvoiceConfirm = async (revenue) => {
+  const handleInvoiceConfirm = async () => {
     try {
       setShowInvoiceModal(false);
 
@@ -190,7 +190,6 @@ export const StatusProgressBar = ({
         projectId,
         action: "next",
         confirm: true,
-        revenue: revenue,
       });
 
       if (result?.message) {

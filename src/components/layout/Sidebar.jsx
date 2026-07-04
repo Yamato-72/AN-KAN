@@ -7,7 +7,8 @@ import {
   Settings,
   Wrench,
   Flag,
-  Banknote, 
+  Banknote,
+  Package,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { createSecretUrl } from "@/utils/secretPath";
@@ -67,10 +68,16 @@ export const Sidebar = () => {
       title: "設置業者",
     },
     {
-      icon: Banknote, // 好きなアイコンに変えてOK
-      href: "https://an-kan-admin-47228502594.europe-west1.run.app/oda-pay", // ← 外部URLそのまま
-      isActive: false, // 外部なので基本これでOK
-      title: "支払管理",
+      icon: Banknote,
+      href: "https://yamato-72.github.io/procurement-system/index.html",
+      isActive: false, // 外部サイト
+      title: "支払ナビ",
+    },
+    {
+      icon: Package,
+      href: "https://yamato-72.github.io/procurement-system/inventory.html",
+      isActive: false, // 外部サイト
+      title: "在庫ナビ",
     },
   ];
 
