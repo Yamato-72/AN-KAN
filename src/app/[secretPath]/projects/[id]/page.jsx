@@ -113,7 +113,7 @@ const handleToggleLost = async () => {
   // タブの定義
   const tabs = [
     { id: "overview", label: "概要", icon: "📊" },
-    { id: "logs", label: "商談ログ", icon: "📝" },
+    { id: "logs", label: "メモ", icon: "📝" },
     { id: "payments", label: "支払いログ", icon: "💰" },
     { id: "activities", label: "アクティビティ", icon: "📋" },
   ];
@@ -318,7 +318,7 @@ const handleToggleLost = async () => {
 
         {activeTab === "logs" && (
           <div className="space-y-6">
-            {/* 商談ログセクション */}
+            {/* メモセクション */}
             <ProjectLogs projectId={project.id} />
           </div>
         )}

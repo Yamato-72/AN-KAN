@@ -173,7 +173,7 @@ export const ProjectLogs = ({ projectId }) => {
     return (
       <div className="bg-white rounded-lg shadow">
         <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900">商談ログ</h2>
+          <h2 className="text-lg font-semibold text-gray-900">メモ</h2>
         </div>
         <div className="px-6 py-8 text-center text-gray-500">読み込み中...</div>
       </div>
@@ -184,7 +184,7 @@ export const ProjectLogs = ({ projectId }) => {
     <>
       <div className="bg-white rounded-lg shadow">
         <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-gray-900">商談ログ</h2>
+          <h2 className="text-lg font-semibold text-gray-900">メモ</h2>
           <button
             onClick={() => setShowAddModal(true)}
             className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center space-x-2 transition-colors"
@@ -202,7 +202,7 @@ export const ProjectLogs = ({ projectId }) => {
           <div className="px-6 py-8 text-center text-gray-500">
             <MessageSquare size={48} className="mx-auto mb-4 text-gray-300" />
             <p>まだログがありません</p>
-            <p className="text-sm mt-2">商談や打ち合わせの記録を残しましょう</p>
+            <p className="text-sm mt-2">打ち合わせ内容や作業メモを残しましょう</p>
           </div>
         ) : (
           <div className="px-6 py-4 space-y-4">
@@ -330,7 +330,7 @@ export const ProjectLogs = ({ projectId }) => {
                   }
                   rows={8}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-vertical"
-                  placeholder="商談内容、決定事項、次回の予定などを記録してください"
+                  placeholder="打ち合わせ内容、決定事項、作業メモなどを記録してください"
                   required
                 />
               </div>
