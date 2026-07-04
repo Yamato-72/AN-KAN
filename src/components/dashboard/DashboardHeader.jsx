@@ -77,11 +77,7 @@ export const DashboardHeader = ({
                   ← クリックで戻る
                 </span>
               )}
-              {userId && (
-                <span className="text-blue-600 bg-blue-50 px-2 py-1 rounded">
-                  ユーザー: {userId}
-                </span>
-              )}
+
             </div>
           </div>
           {showStaffInfo && (
@@ -102,9 +98,7 @@ export const DashboardHeader = ({
                     <p className="text-sm font-medium text-gray-900">
                       {currentStaff.name}
                     </p>
-                    <p className="text-xs text-gray-600">
-                      ID: {currentStaff.id} | Code: {currentStaff.code}
-                    </p>
+
                   </div>
                 </>
               ) : (
