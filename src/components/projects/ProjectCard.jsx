@@ -91,7 +91,7 @@ export const ProjectCard = ({
   return (
     <>
       <div
-        className={`border border-gray-200 rounded-lg p-4 lg:p-6 hover:shadow-md transition-shadow hover:border-blue-300 relative ${
+        className={`border border-gray-200 rounded-lg p-3 lg:p-6 hover:shadow-md transition-shadow hover:border-blue-300 relative ${
           project.trouble_flag ? "bg-yellow-50 border-yellow-300" : "bg-white"
         }`}
       >
@@ -161,7 +161,7 @@ export const ProjectCard = ({
         >
           <div className="flex items-start justify-between mb-4">
             <div className="flex-1">
-              <h3 className="text-base lg:text-lg font-semibold text-gray-700 mb-2 leading-snug hover:text-blue-600 transition-colors">
+              <h3 className="text-sm lg:text-lg font-semibold text-gray-700 mb-1.5 lg:mb-2 leading-snug hover:text-blue-600 transition-colors">
                 {project.client_name}
               </h3>
             </div>

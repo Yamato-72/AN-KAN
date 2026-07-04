@@ -43,7 +43,7 @@ export const ProjectGrid = ({
 
   return (
     <section className="px-4 lg:pl-24 pb-8">
-      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 lg:gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-2.5 lg:gap-6">
         {uniqueProjects.map((project) => (
           <ProjectCard
             key={project.id}   // ← index禁止。必ずid
