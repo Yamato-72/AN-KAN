@@ -68,12 +68,12 @@ export async function POST(request) {
         };
 
         // ステータスの検証
+        // 現行の5段階ステータス（DBのchk_projects_status制約と一致させること）
         const validStatuses = [
+          "リード",
           "打ち合わせ中",
           "受注済み",
-          "国際発注済",
-          "設置手配済",
-          "設置完了",
+          "手配中",
           "残金請求済",
         ];
         if (projectData.status && !validStatuses.includes(projectData.status)) {

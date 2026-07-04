@@ -1,6 +1,7 @@
 import { query } from "@/lib/db";
 import { createGoogleDriveFolder } from "@/app/api/utils/googleDrive";
 import { normalizePrefix, initialStatusFor, formatProjectNumber } from "@/lib/prefixes";
+import { issueServiceToInventory } from "@/app/api/utils/inventorySheet";
 
 export async function GET(request) {
   try {
@@ -381,6 +382,43 @@ export async function POST(request) {
       }
     } catch (driveError) {
       console.error("Google Drive integration error:", driveError);
+    }
+
+    // TS案件は作成と同時に在庫ナビへ自動発券（ゼロタップ運用）
+    //   - 内容は案件名を流用（発券API側と同じ扱い）
+    //   - 発券に失敗しても案件作成は成功扱い（在庫シート側の不調で登録を巻き添えにしない）
+    //   - 二重発券は issueServiceToInventory 側で弾かれる
+    if (normalizedPrefix === "TS") {
+      try {
+        const issueResult = await issueServiceToInventory({
+          prefix: normalizedPrefix,
+          number: project.ad_number,
+          content: project_name,
+          note: "AN-KAN自動発券",
+        });
+        if (issueResult.success) {
+          await query(
+            `INSERT INTO project_activities (project_id, activity_type, description) VALUES ($1, $2, $3)`,
+            [
+              project.id,
+              "service_issued",
+              `在庫ナビへ自動発券（${issueResult.projectNumber}・${project_name}）`,
+            ]
+          );
+        } else {
+          console.error("TS自動発券失敗:", issueResult.error);
+          await query(
+            `INSERT INTO project_activities (project_id, activity_type, description) VALUES ($1, $2, $3)`,
+            [
+              project.id,
+              "service_issue_failed",
+              `在庫ナビへの自動発券に失敗（${issueResult.error}）。詳細ページの「在庫ナビへ発券」から手動で発券してください`,
+            ]
+          );
+        }
+      } catch (issueError) {
+        console.error("TS自動発券エラー:", issueError);
+      }
     }
 
     return Response.json(project);
