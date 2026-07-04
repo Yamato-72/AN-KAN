@@ -94,15 +94,10 @@ export async function GET() {
       { status: 200, headers },
     );
   } catch (error) {
-    console.error("ダッシュボード集計エラー:", error);
-    // デバッグしやすいよう、どの手順で・どんなエラーかを返す
-    // （テーブルの列名レベルの情報のみで、案件データは含まれない）
+    // 詳細はサーバログのみに出す（公開URLなので中身は返さない）
+    console.error(`ダッシュボード集計エラー（${step}）:`, error);
     return Response.json(
-      {
-        error: "集計に失敗しました",
-        step,
-        detail: String(error && error.message ? error.message : error),
-      },
+      { error: "集計に失敗しました" },
       { status: 500, headers },
     );
   }
