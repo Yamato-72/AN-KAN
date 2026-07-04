@@ -1,5 +1,6 @@
 import { Menu, Bell, Search, MoreHorizontal, Plus } from "lucide-react";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { SalesProgressBand } from "@/components/SalesProgressBand";
 
 export const Header = ({
   onMobileMenuClick,
@@ -16,6 +17,7 @@ export const Header = ({
   };
 
   return (
+    <>
     <header className="sticky top-0 z-30 flex items-center justify-between gap-4 px-4 lg:pl-20 h-16 border-b border-gray-200 bg-white">
       {/* Left cluster */}
       <div className="flex items-center gap-4">
@@ -117,6 +119,8 @@ export const Header = ({
         </button>
       </div>
     </header>
+    <SalesProgressBand />
+    </>
   );
 };
 
