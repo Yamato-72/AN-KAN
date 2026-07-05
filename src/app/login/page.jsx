@@ -48,7 +48,9 @@ export default function LoginPage() {
       // 元居たページへ（無ければトップ）
       const params = new URLSearchParams(window.location.search);
       const next = params.get("next");
-      window.location.href = next && next.startsWith("/") ? next : "/";
+      // 行き先指定が無ければ /app へ（トップは案内ページなので避ける）
+      window.location.href =
+        next && next.startsWith("/") && next !== "/" ? next : "/app";
     } catch (e) {
       setError(e.message);
       setLoading(false);
