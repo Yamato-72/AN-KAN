@@ -1,4 +1,5 @@
 import sql from "@/app/api/utils/sql";
+import { requireEditPermission } from "@/lib/authz";
 
 // ログの取得
 export async function GET(request, { params }) {
@@ -24,6 +25,10 @@ export async function GET(request, { params }) {
 // ログの作成
 export async function POST(request, { params }) {
   try {
+    // 編集権限チェック（担当者本人 or 管理者のみ。見学モード中は素通し）
+    const denied = await requireEditPermission(request, params.id);
+    if (denied) return denied;
+
     const { id } = params;
     const body = await request.json();
     const { title, content, log_date, created_by } = body;

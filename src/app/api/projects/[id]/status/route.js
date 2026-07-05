@@ -1,4 +1,5 @@
 import sql from "@/app/api/utils/sql";
+import { requireEditPermission } from "@/lib/authz";
 import { sendOrderAlert } from "@/app/api/utils/mailer";
 
 // ステータスの順序（画面の進捗バー STATUS_STEPS と完全一致させる）
@@ -14,6 +15,10 @@ const STATUS_ORDER = [
 
 export async function PUT(request, { params }) {
   try {
+    // 編集権限チェック（担当者本人 or 管理者のみ。見学モード中は素通し）
+    const denied = await requireEditPermission(request, params.id);
+    if (denied) return denied;
+
     const { id } = params;
     const body = await request.json();
     const { action, confirm, installationData, revenue, deliveryDate } = body; // deliveryDateを追加

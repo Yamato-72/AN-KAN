@@ -1,4 +1,5 @@
 import sql from "@/app/api/utils/sql";
+import { requireEditPermission } from "@/lib/authz";
 import { issueServiceToInventory } from "@/app/api/utils/inventorySheet";
 
 // ============================================================
@@ -10,6 +11,10 @@ import { issueServiceToInventory } from "@/app/api/utils/inventorySheet";
 
 export async function POST(request, { params }) {
   try {
+    // 編集権限チェック（担当者本人 or 管理者のみ。見学モード中は素通し）
+    const denied = await requireEditPermission(request, params.id);
+    if (denied) return denied;
+
     const { id } = params;
     const body = await request.json().catch(() => ({}));
     const content = body.content; // 内容（修理/現調/保守 など）
