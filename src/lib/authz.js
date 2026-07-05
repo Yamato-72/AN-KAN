@@ -43,3 +43,18 @@ export async function requireEditPermission(request, projectId) {
     { status: 403 },
   );
 }
+
+// 管理者専用機能の門番（見学モードでも常に効く）
+export async function requireAdmin(request) {
+  const session = await getSessionFromRequest(request);
+  if (!session) {
+    return Response.json({ error: "ログインが必要です" }, { status: 401 });
+  }
+  if (!session.isAdmin) {
+    return Response.json(
+      { error: "この操作は管理者のみ可能です" },
+      { status: 403 },
+    );
+  }
+  return null;
+}
