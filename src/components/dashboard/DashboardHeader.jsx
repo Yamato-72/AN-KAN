@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { ViewScopeSwitch } from "@/components/ViewScopeSwitch";
 import { User } from "lucide-react";
 import { createSecretUrl } from "@/utils/secretPath";
 
@@ -70,8 +71,8 @@ export const DashboardHeader = ({
             >
               AN-KAN
             </button>
-            <div className="flex items-center gap-3 text-sm text-gray-600">
-              <span>プロジェクトの進捗管理と状況確認</span>
+            <div className="flex items-center gap-3 text-sm text-gray-600 flex-wrap">
+              <ViewScopeSwitch current="self" fallbackCode={userId} />
               {onBackClick && (
                 <span className="text-blue-600 bg-blue-50 px-2 py-1 rounded text-xs">
                   ← クリックで戻る

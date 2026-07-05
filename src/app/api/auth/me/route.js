@@ -5,8 +5,9 @@ import { SESSION_COOKIE } from "@/lib/authConfig";
 export async function GET(request) {
   const token = readCookie(request.headers.get("cookie"), SESSION_COOKIE);
   const session = await verifySession(token, process.env.AUTH_SECRET);
+  const enforce = process.env.AUTH_ENFORCE === "true";
   if (!session) {
-    return Response.json({ user: null }, { status: 200 });
+    return Response.json({ user: null, enforce }, { status: 200 });
   }
-  return Response.json({ user: session }, { status: 200 });
+  return Response.json({ user: session, enforce }, { status: 200 });
 }

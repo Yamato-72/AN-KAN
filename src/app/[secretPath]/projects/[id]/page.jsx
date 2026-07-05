@@ -14,6 +14,7 @@ import { ProjectClientInfo } from "@/components/projects/ProjectClientInfo";
 import { ProjectActivities } from "@/components/projects/ProjectActivities";
 import { PassProjectModal } from "@/components/projects/PassProjectModal";
 import { ProjectActionButtons } from "@/components/projects/ProjectActionButtons";
+import { useEditPermission } from "@/hooks/useEditPermission";
 import { StatusProgressBar } from "@/components/StatusProgressBar";
 import { useProjectDetail } from "@/hooks/useProjectDetail";
 import { useStaffMembers } from "@/hooks/useStaffMembers";
@@ -158,6 +159,8 @@ const handleToggleLost = async () => {
     (staff) => staff.code === project?.assigned_team_member,
   );
   const canPass = assignedStaff?.passer && project?.assigned_team_member;
+  // 編集権限（本稼働後は担当者・管理者のみtrue）
+  const canEdit = useEditPermission(project);
 
   // GFIモードの場合の簡略表示は変更なし
   if (isGfiMode) {
@@ -270,6 +273,7 @@ const handleToggleLost = async () => {
 
         {/* アクションボタン（上部に配置・スクロール不要でどのタブでも表示） */}
         <div className="mb-6">
+          {canEdit ? (
           <ProjectActionButtons
             canPass={canPass}
             onEdit={() => setShowEditModal(true)}
@@ -279,17 +283,22 @@ const handleToggleLost = async () => {
             isLost={project.lost_flag}
             isHold={project.hold_flag}
           />
+        ) : (
+          <p className="text-xs text-gray-400 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 inline-block">
+            🔒 この案件を編集できるのは担当者（{project.assigned_team_member || "未設定"}）と管理者のみです
+          </p>
+        )}
         </div>
 
         {/* タブナビゲーション */}
         <div className="mt-6 mb-6">
           <div className="border-b border-gray-200">
-            <nav className="-mb-px flex space-x-8">
+            <nav className="-mb-px flex gap-4 lg:gap-8 overflow-x-auto">
               {tabs.map((tab) => (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center space-x-2 ${
+                  className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center space-x-1.5 whitespace-nowrap flex-none ${
                     activeTab === tab.id
                       ? "border-blue-500 text-blue-600"
                       : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"

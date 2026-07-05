@@ -10,6 +10,7 @@ import { ProjectFilterBar } from "@/components/projects/ProjectFilterBar";
 import { ProjectGrid } from "@/components/projects/ProjectGrid";
 import { ProjectList } from "@/components/projects/ProjectList";
 import { ViewToggle } from "@/components/projects/ViewToggle";
+import { ViewScopeSwitch } from "@/components/ViewScopeSwitch";
 import { NewProjectModal } from "@/components/projects/NewProjectModal";
 
 export default function AllProjectsPage() {
@@ -173,6 +174,7 @@ export default function AllProjectsPage() {
 
       <main className="lg:ml-16">
         <Breadcrumbs />
+        <div className="mb-4"><ViewScopeSwitch current="all" /></div>
 
         <div className="p-4 lg:p-6">
           <div className="mb-6">
