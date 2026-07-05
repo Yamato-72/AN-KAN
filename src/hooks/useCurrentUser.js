@@ -13,7 +13,33 @@ export function useCurrentUser() {
     try {
       setLoading(true);
 
-      // API から全スタッフ情報を取得
+      // まずログインセッション（本人確認済み）を確認
+      // ログイン済みならその人を担当者として使う（なりすまし不可）
+      try {
+        const meRes = await fetch("/api/auth/me");
+        if (meRes.ok) {
+          const me = await meRes.json();
+          if (me.user && me.user.code) {
+            const staffRes = await fetch("/api/staff");
+            if (staffRes.ok) {
+              const allStaff = await staffRes.json();
+              const sessionStaff = allStaff.find(
+                (s) => s.code === me.user.code,
+              );
+              if (sessionStaff) {
+                setCurrentUser(sessionStaff);
+                setError(null);
+                setLoading(false);
+                return;
+              }
+            }
+          }
+        }
+      } catch (e) {
+        // セッション確認に失敗しても従来方式にフォールバック
+      }
+
+      // API から全スタッフ情報を取得（従来方式・見学モード互換）
       const response = await fetch("/api/staff");
       if (!response.ok) throw new Error("スタッフの取得に失敗しました");
       const allStaff = await response.json();
