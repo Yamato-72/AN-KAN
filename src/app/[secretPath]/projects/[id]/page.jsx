@@ -24,6 +24,8 @@ export default function ProjectDetailPage({ params }) {
   const { project, loading, error, refetch } = useProjectDetail(params.id);
   const { staffMembers } = useStaffMembers();
   const { passProject, passingProject } = usePassProject(params.id);
+  // 編集権限（本稼働後は担当者・管理者のみtrue）。フックなので必ず冒頭で呼ぶ
+  const canEdit = useEditPermission(project);
 
   const [showPassModal, setShowPassModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -159,8 +161,6 @@ const handleToggleLost = async () => {
     (staff) => staff.code === project?.assigned_team_member,
   );
   const canPass = assignedStaff?.passer && project?.assigned_team_member;
-  // 編集権限（本稼働後は担当者・管理者のみtrue）
-  const canEdit = useEditPermission(project);
 
   // GFIモードの場合の簡略表示は変更なし
   if (isGfiMode) {
