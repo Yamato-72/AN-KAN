@@ -56,7 +56,7 @@ export async function POST(request) {
     let staff = null;
     try {
       const { rows } = await query(
-        `SELECT code, name, COALESCE(is_admin, false) AS is_admin FROM staff_members WHERE LOWER(email) = $1 AND active = true LIMIT 1`,
+        `SELECT code, name, COALESCE(is_admin, false) AS is_admin, COALESCE(all_view, false) AS all_view FROM staff_members WHERE LOWER(email) = $1 AND active = true LIMIT 1`,
         [email],
       );
       staff = rows[0] || null;
@@ -70,6 +70,7 @@ export async function POST(request) {
       name: staff?.name || info.name || email,
       code: staff?.code || null,
       isAdmin: staff?.is_admin === true,
+      allView: staff?.all_view === true,
       exp: Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000,
     };
     const token = await createSession(payload, process.env.AUTH_SECRET);

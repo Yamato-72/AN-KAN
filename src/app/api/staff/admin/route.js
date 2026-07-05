@@ -14,7 +14,7 @@ export async function GET(request) {
   if (denied) return denied;
   try {
     const { rows } = await query(
-      `SELECT id, code, name, email, active, passer, COALESCE(is_admin, false) AS is_admin
+      `SELECT id, code, name, email, active, passer, COALESCE(is_admin, false) AS is_admin, COALESCE(all_view, false) AS all_view
        FROM staff_members ORDER BY code`,
     );
     return NextResponse.json(rows);
@@ -52,7 +52,7 @@ export async function POST(request) {
     const { rows } = await query(
       `INSERT INTO staff_members (code, name, email, active, is_admin)
        VALUES ($1, $2, $3, true, false)
-       RETURNING id, code, name, email, active, passer, COALESCE(is_admin,false) AS is_admin`,
+       RETURNING id, code, name, email, active, passer, COALESCE(is_admin,false) AS is_admin, COALESCE(all_view,false) AS all_view`,
       [code, name.trim(), email ? email.trim().toLowerCase() : null],
     );
     return NextResponse.json(rows[0]);
@@ -66,7 +66,7 @@ export async function PATCH(request) {
   const denied = await requireAdmin(request);
   if (denied) return denied;
   try {
-    const { id, name, email, active, is_admin, passer } = await request.json();
+    const { id, name, email, active, is_admin, passer, all_view } = await request.json();
     if (!id) return NextResponse.json({ error: "idは必須です" }, { status: 400 });
 
     const { rows } = await query(
@@ -75,9 +75,10 @@ export async function PATCH(request) {
          email = COALESCE($3, email),
          active = COALESCE($4, active),
          is_admin = COALESCE($5, is_admin),
-         passer = COALESCE($6, passer)
+         passer = COALESCE($6, passer),
+         all_view = COALESCE($7, all_view)
        WHERE id = $1
-       RETURNING id, code, name, email, active, passer, COALESCE(is_admin,false) AS is_admin`,
+       RETURNING id, code, name, email, active, passer, COALESCE(is_admin,false) AS is_admin, COALESCE(all_view,false) AS all_view`,
       [
         id,
         name === undefined ? null : name,
@@ -85,6 +86,7 @@ export async function PATCH(request) {
         active === undefined ? null : active,
         is_admin === undefined ? null : is_admin,
         passer === undefined ? null : passer,
+        all_view === undefined ? null : all_view,
       ],
     );
     if (rows.length === 0) {

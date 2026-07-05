@@ -154,6 +154,11 @@ export default function StaffAdminPage() {
                   Pass権限
                 </label>
                 <label className="flex items-center gap-1.5 cursor-pointer">
+                  <input type="checkbox" checked={s.all_view}
+                    onChange={(e) => updateStaff(s.id, { all_view: e.target.checked }, `${s.name} の全体ビュー直行を${e.target.checked ? "ON" : "OFF"}にしました`)} />
+                  全体ビュー直行
+                </label>
+                <label className="flex items-center gap-1.5 cursor-pointer">
                   <input type="checkbox" checked={s.active}
                     onChange={(e) => updateStaff(s.id, { active: e.target.checked }, `${s.name} を${e.target.checked ? "有効化" : "無効化"}しました`)} />
                   有効
