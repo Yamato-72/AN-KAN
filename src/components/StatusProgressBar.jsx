@@ -270,8 +270,12 @@ export const StatusProgressBar = ({
             // 完了済み：グレー（チェック）
             buttonStyle = "bg-[#89909c]";
             textStyle = "text-gray-500";
+          } else if (isNext && !disabled) {
+            // 次の一歩：うっすら光らせて明滅（押して進められることを示す）
+            buttonStyle = `${step.color} opacity-60 animate-pulse hover:animate-none`;
+            textStyle = "text-gray-500";
           } else {
-            // これから（次・未来）：本来の色を薄く
+            // 未来のステップ：本来の色を薄く
             buttonStyle = `${step.color} opacity-30`;
             textStyle = "text-gray-400";
           }
