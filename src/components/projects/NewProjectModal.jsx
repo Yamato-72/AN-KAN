@@ -114,7 +114,8 @@ export const NewProjectModal = ({
   // 社内担当者一覧を取得（ドロップダウン用）
   const fetchStaffList = async () => {
     try {
-      const response = await fetch("/api/staff");
+      // 退職者も含めて取得（過去案件の担当記録のため。表示で区別する）
+      const response = await fetch("/api/staff?include_inactive=true");
       if (response.ok) {
         const data = await response.json();
         setStaffList(data.filter((s) => s.code)); // コード持ちのみ
@@ -652,11 +653,24 @@ export const NewProjectModal = ({
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
             >
               <option value="">担当者なし</option>
-              {staffList.map((s) => (
-                <option key={s.code} value={s.code}>
-                  {s.name}（{s.code}）
-                </option>
-              ))}
+              {staffList
+                .filter((s) => s.active)
+                .map((s) => (
+                  <option key={s.code} value={s.code}>
+                    {s.name}（{s.code}）
+                  </option>
+                ))}
+              {staffList.some((s) => !s.active) && (
+                <optgroup label="退職済み（過去案件の記録用）">
+                  {staffList
+                    .filter((s) => !s.active)
+                    .map((s) => (
+                      <option key={s.code} value={s.code}>
+                        {s.name}（{s.code}・退職済み）
+                      </option>
+                    ))}
+                </optgroup>
+              )}
             </select>
             <p className="text-xs text-gray-400 mt-1">
               新規作成時は自動で自分が入ります。過去案件の整備や担当変更はここで

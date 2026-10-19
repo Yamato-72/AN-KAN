@@ -2,8 +2,13 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db"; // ★ Neon じゃなくて pg 用ヘルパー
 
-export async function GET() {
+export async function GET(request) {
   try {
+    // include_inactive=true を付けると退職者（有効OFF）も含めて返す
+    // （過去案件の担当記録用。通常の選択肢は従来通り有効な人のみ）
+    const { searchParams } = new URL(request.url);
+    const includeInactive = searchParams.get("include_inactive") === "true";
+
     const { rows } = await query(
       `
       SELECT
@@ -14,7 +19,7 @@ export async function GET() {
         active,
         passer
       FROM staff_members
-      WHERE active = true
+      ${includeInactive ? "" : "WHERE active = true"}
       ORDER BY id
       `
     );
