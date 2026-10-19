@@ -12,6 +12,7 @@ export async function POST(request) {
     const results = {
       success: 0,
       errors: [],
+      warnings: [],
       imported: [],
     };
 
@@ -51,6 +52,16 @@ export async function POST(request) {
         }
 
         // 必要なフィールドをマッピング
+        // 既存Driveフォルダのリンク（過去案件用・任意列）
+        //   http(s)で始まるものだけ受け付け、それ以外は無視して警告
+        let driveLink = (row.drive_folder_link || "").trim() || null;
+        if (driveLink && !/^https?:\/\//.test(driveLink)) {
+          results.warnings.push(
+            `行 ${rowNumber}: drive_folder_linkがURL形式でないため無視しました（${driveLink}）`,
+          );
+          driveLink = null;
+        }
+
         const projectData = {
           ad_number: parseInt(row.ad_number) || null,
           project_name:
@@ -88,12 +99,14 @@ export async function POST(request) {
         const insertResult = await sql`
           INSERT INTO projects (
             ad_number, project_name, client_name, status, completion_percentage,
-            delivery_date, installation_date, installation_contractor, remarks, assigned_team_member
+            delivery_date, installation_date, installation_contractor, remarks, assigned_team_member,
+            drive_folder_link
           ) VALUES (
             ${projectData.ad_number}, ${projectData.project_name}, ${projectData.client_name}, 
             ${projectData.status}, ${projectData.completion_percentage}, ${projectData.delivery_date},
             ${projectData.installation_date}, ${projectData.installation_contractor}, 
-            ${projectData.remarks}, ${projectData.assigned_team_member}
+            ${projectData.remarks}, ${projectData.assigned_team_member},
+            ${driveLink}
           ) RETURNING id, project_name
         `;
 

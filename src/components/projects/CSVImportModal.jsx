@@ -169,7 +169,7 @@ export default function CSVImportModal({ isOpen, onClose, onSuccess }) {
                   以下のヘッダーでCSVファイルを作成してください：
                 </p>
                 <code className="text-xs bg-blue-100 p-2 rounded block overflow-x-auto">
-                  ad_number,project_name,client_name,status,completion_percentage,delivery_date,installation_date,installation_contractor,remarks,assigned_team_member
+                  ad_number,project_name,client_name,status,completion_percentage,delivery_date,installation_date,installation_contractor,remarks,assigned_team_member,drive_folder_link
                 </code>
                 <div className="mt-3 text-xs text-blue-600">
                   <p>• delivery_date, installation_date: YYYY-MM-DD形式</p>
@@ -305,6 +305,24 @@ export default function CSVImportModal({ isOpen, onClose, onSuccess }) {
                     {importResult.results.errors.map((error, index) => (
                       <p key={index} className="text-sm text-red-700">
                         {error}
+                      </p>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {(importResult.results.warnings || []).length > 0 && (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <AlertCircle className="h-5 w-5 text-amber-500" />
+                    <p className="font-medium text-amber-800">
+                      {importResult.results.warnings.length}件の警告（取り込みは成功）
+                    </p>
+                  </div>
+                  <div className="max-h-32 overflow-y-auto">
+                    {importResult.results.warnings.map((w, index) => (
+                      <p key={index} className="text-sm text-amber-700">
+                        {w}
                       </p>
                     ))}
                   </div>
