@@ -95,14 +95,49 @@ export async function POST(request) {
           projectData.status = "打ち合わせ中";
         }
 
+        // 重複チェック：同じAD番号が既に登録されていたらスキップ
+        //（importはAD固定なので、接頭辞AD（未設定含む）の中で突き合わせる）
+        if (projectData.ad_number) {
+          const dup = await sql`
+            SELECT id FROM projects
+            WHERE COALESCE(prefix, 'AD') = 'AD' AND ad_number = ${projectData.ad_number}
+            LIMIT 1
+          `;
+          if (dup.length > 0) {
+            results.warnings.push(
+              `行 ${rowNumber}: AD-${projectData.ad_number} は既に登録済みのためスキップしました`,
+            );
+            continue;
+          }
+        }
+
+        // 顧客の紐付け：新規登録と同じ流儀で、同名の顧客を流用 or 新規作成
+        //（画面の取引先名は顧客テーブルから表示されるため、紐付けが無いと空に見える）
+        let clientId = null;
+        if (projectData.client_name) {
+          const existingClient = await sql`
+            SELECT id FROM clients WHERE client_name = ${projectData.client_name} LIMIT 1
+          `;
+          if (existingClient.length > 0) {
+            clientId = existingClient[0].id;
+          } else {
+            const newClient = await sql`
+              INSERT INTO clients (client_name, company_address, phone_number, contact_person, email)
+              VALUES (${projectData.client_name}, ${null}, ${null}, ${null}, ${null})
+              RETURNING id
+            `;
+            clientId = newClient[0].id;
+          }
+        }
+
         // データベースに挿入
         const insertResult = await sql`
           INSERT INTO projects (
-            ad_number, project_name, client_name, status, completion_percentage,
+            ad_number, project_name, client_name, client_id, status, completion_percentage,
             delivery_date, installation_date, installation_contractor, remarks, assigned_team_member,
             drive_folder_link
           ) VALUES (
-            ${projectData.ad_number}, ${projectData.project_name}, ${projectData.client_name}, 
+            ${projectData.ad_number}, ${projectData.project_name}, ${projectData.client_name}, ${clientId},
             ${projectData.status}, ${projectData.completion_percentage}, ${projectData.delivery_date},
             ${projectData.installation_date}, ${projectData.installation_contractor}, 
             ${projectData.remarks}, ${projectData.assigned_team_member},
