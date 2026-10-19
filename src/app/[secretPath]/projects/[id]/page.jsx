@@ -269,7 +269,7 @@ const handleToggleLost = async () => {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* ヘッダー部分 */}
-        <ProjectDetailHeader project={project} onBack={handleBack} />
+        <ProjectDetailHeader project={project} onBack={handleBack} onUpdated={refetch} />
 
         {/* アクションボタン（上部に配置・スクロール不要でどのタブでも表示） */}
         <div className="mb-6">
