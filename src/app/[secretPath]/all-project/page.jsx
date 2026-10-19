@@ -12,6 +12,7 @@ import { ProjectList } from "@/components/projects/ProjectList";
 import { ViewToggle } from "@/components/projects/ViewToggle";
 import { ViewScopeSwitch } from "@/components/ViewScopeSwitch";
 import { NewProjectModal } from "@/components/projects/NewProjectModal";
+import CSVImportModal from "@/components/projects/CSVImportModal";
 
 export default function AllProjectsPage() {
   const [projects, setProjects] = useState([]);
@@ -24,6 +25,7 @@ export default function AllProjectsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState("grid");
   const [showNewProjectModal, setShowNewProjectModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false); // 過去案件CSV取り込み
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [showMobileSearch, setShowMobileSearch] = useState(false);
 
@@ -211,6 +213,14 @@ export default function AllProjectsPage() {
                 </button>
 
                 <ViewToggle viewMode={viewMode} onViewModeChange={setViewMode} />
+
+                <button
+                  onClick={() => setShowImportModal(true)}
+                  className="px-3 py-2 text-sm border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-50 whitespace-nowrap"
+                  title="過去案件のCSV取り込み（Driveフォルダは作成されません）"
+                >
+                  CSVインポート
+                </button>
               </div>
             </div>
           </div>
@@ -242,6 +252,13 @@ export default function AllProjectsPage() {
       <NewProjectModal
         show={showNewProjectModal}
         onClose={() => setShowNewProjectModal(false)}
+        onSuccess={fetchProjects}
+      />
+
+      {/* 過去案件のCSV取り込み（importはDriveフォルダを作らない） */}
+      <CSVImportModal
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
         onSuccess={fetchProjects}
       />
     </div>
