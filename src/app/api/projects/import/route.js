@@ -22,32 +22,44 @@ export async function POST(request) {
       const rowNumber = i + 1;
 
       try {
-        // assigned_team_memberの処理：アルファベットコードをそのまま使用
+        // assigned_team_memberの処理：コード（A〜Z）でも名前でも受け付ける
+        //   例：「B」「大山」「大山将司」のどれでもOK。退職者も可（過去案件の記録用）
         let assignedTeamMemberCode = null;
         if (row.assigned_team_member) {
-          const assignedCode = row.assigned_team_member
-            .toString()
-            .trim()
-            .toUpperCase();
+          const rawAssigned = row.assigned_team_member.toString().trim();
+          const assignedCode = rawAssigned.toUpperCase();
 
-          // アルファベットコードの場合、存在確認
           if (assignedCode.match(/^[A-Z]$/)) {
+            // ① コード指定（1文字）
             const staffExists = await sql`
               SELECT code FROM staff_members WHERE code = ${assignedCode}
             `;
             if (staffExists.length > 0) {
               assignedTeamMemberCode = assignedCode;
             } else {
-              // 存在しない担当者コードの場合、警告として記録するが処理は続行
-              results.errors.push(
+              results.warnings.push(
                 `行 ${rowNumber}: 存在しない担当者コード "${assignedCode}" - 担当者なしで登録しました`,
               );
             }
-          } else if (assignedCode) {
-            // 無効な担当者コードの場合、警告として記録するが処理は続行
-            results.errors.push(
-              `行 ${rowNumber}: 無効な担当者コード "${assignedCode}" - 担当者なしで登録しました`,
-            );
+          } else {
+            // ② 名前指定：完全一致 → 部分一致の順で探す
+            const byName = await sql`
+              SELECT code, name FROM staff_members
+              WHERE name = ${rawAssigned}
+                 OR name LIKE ${"%" + rawAssigned + "%"}
+              ORDER BY (name = ${rawAssigned}) DESC
+            `;
+            if (byName.length === 1 || (byName.length > 0 && byName[0].name === rawAssigned)) {
+              assignedTeamMemberCode = byName[0].code;
+            } else if (byName.length > 1) {
+              results.warnings.push(
+                `行 ${rowNumber}: 担当者名 "${rawAssigned}" に複数の候補があり特定できません - 担当者なしで登録しました`,
+              );
+            } else {
+              results.warnings.push(
+                `行 ${rowNumber}: 担当者 "${rawAssigned}" が見つかりません - 担当者なしで登録しました`,
+              );
+            }
           }
         }
 
