@@ -87,6 +87,7 @@ export async function POST(request) {
             : null,
           installation_contractor: row.installation_contractor || null,
           remarks: row.remarks || null,
+          product_number: row.product_number || null, // 製品名・型番（自由記入）
           assigned_team_member: assignedTeamMemberCode,
         };
 
@@ -154,13 +155,13 @@ export async function POST(request) {
         const insertResult = await sql`
           INSERT INTO projects (
             ad_number, project_name, client_name, client_id, status, completion_percentage,
-            delivery_date, installation_date, installation_contractor, remarks, assigned_team_member,
-            drive_folder_link, created_at, updated_at
+            delivery_date, installation_date, installation_contractor, remarks, product_number,
+            assigned_team_member, drive_folder_link, created_at, updated_at
           ) VALUES (
             ${projectData.ad_number}, ${projectData.project_name}, ${projectData.client_name}, ${clientId},
             ${projectData.status}, ${projectData.completion_percentage}, ${projectData.delivery_date},
             ${projectData.installation_date}, ${projectData.installation_contractor}, 
-            ${projectData.remarks}, ${projectData.assigned_team_member},
+            ${projectData.remarks}, ${projectData.product_number}, ${projectData.assigned_team_member},
             ${driveLink}, ${historicalTs}, ${historicalTs}
           ) RETURNING id, project_name
         `;
