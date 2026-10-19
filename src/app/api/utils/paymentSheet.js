@@ -81,8 +81,8 @@ export async function getDepositStatus({ prefix, number }) {
   try {
     const accessToken = await getSheetsAccessToken(credentials);
 
-    // 案件シートの A2:G を読む（接頭辞B・番号C・デポジット予定G）
-    const range = `${PROJECT_SHEET_NAME}!A2:G`;
+    // 案件シートの A2:O を読む（接頭辞B・番号C・製品名E・デポジット予定G・発注ロットO）
+    const range = `${PROJECT_SHEET_NAME}!A2:O`;
     const res = await fetch(
       `https://sheets.googleapis.com/v4/spreadsheets/${DATA_SPREADSHEET_ID}/values/${encodeURIComponent(range)}`,
       { headers: { Authorization: `Bearer ${accessToken}` } },
@@ -98,37 +98,68 @@ export async function getDepositStatus({ prefix, number }) {
 
     const data = await res.json();
     const rows = data.values || [];
-    const numStr = String(number);
+    const targetNum = parseInt(number, 10);
 
-    // 接頭辞(列B=index1)・番号(列C=index2)が一致する行を探す
-    const row = rows.find(
+    // 接頭辞(列B)・番号(列C)が一致する行を「すべて」集める
+    //   同じ案件番号に複数製品・追加発注（発注ロット）がある場合があるため
+    //   番号は "0055" と 55 のような表記ゆれに備えて数値で比較
+    const matched = rows.filter(
       (r) =>
         String(r[1] || "").toUpperCase() === String(prefix).toUpperCase() &&
-        String(r[2]) === numStr,
+        parseInt(r[2], 10) === targetNum,
     );
 
-    if (!row) {
+    if (matched.length === 0) {
       return { found: false };
     }
 
-    const productName = row[4] || "";
-    let deposits = [];
-    try {
-      const parsed = JSON.parse(row[6] || "[]");
-      if (Array.isArray(parsed)) {
-        deposits = parsed.map((d) => ({
-          depositNumber: d.depositNumber,
-          percentage: d.percentage,
-          amountUSD: d.amountUSD,
-          paid: !!d.paid,
-          paidDate: d.paidDate || null,
-          amountJPY: d.amountJPY ?? null,
-        }));
+    // 発注ロット(列O) × 支払回 ごとに合算
+    //   初回の1回目と追加発注の1回目は別の支払いなので混ぜない
+    const byKey = {};
+    const productNames = [];
+    matched.forEach((r) => {
+      if (r[4] && !productNames.includes(r[4])) productNames.push(r[4]);
+      const orderBatch = parseInt(r[14], 10) || 0;
+      let parsed = [];
+      try {
+        parsed = JSON.parse(r[6] || "[]");
+      } catch (e) {
+        parsed = []; // JSONが壊れている行はスキップ
       }
-    } catch (e) {
-      // JSONが壊れている場合は空扱い
-      deposits = [];
-    }
+      if (!Array.isArray(parsed)) return;
+      parsed.forEach((d) => {
+        const key = `${orderBatch}-${d.depositNumber}`;
+        if (!byKey[key]) {
+          byKey[key] = {
+            orderBatch,
+            depositNumber: d.depositNumber,
+            percentage: d.percentage,
+            amountUSD: 0,
+            amountJPY: null,
+            paid: true, // 同じ回の全製品が支払済みのときだけ「済」
+            paidDate: null,
+          };
+        }
+        const agg = byKey[key];
+        agg.amountUSD += Number(d.amountUSD) || 0;
+        if (d.amountJPY !== null && d.amountJPY !== undefined && d.amountJPY !== "") {
+          agg.amountJPY = (agg.amountJPY || 0) + (Number(d.amountJPY) || 0);
+        }
+        if (!d.paid) agg.paid = false;
+        if (d.paidDate && !agg.paidDate) agg.paidDate = d.paidDate;
+      });
+    });
+
+    const deposits = Object.values(byKey)
+      .map((d) => ({
+        ...d,
+        amountUSD: Math.round(d.amountUSD * 100) / 100,
+        amountJPY: d.amountJPY !== null ? Math.round(d.amountJPY) : null,
+        paidDate: d.paid ? d.paidDate : null,
+      }))
+      .sort((x, y) => x.orderBatch - y.orderBatch || x.depositNumber - y.depositNumber);
+
+    const productName = productNames.join(", ");
 
     return { found: true, deposits, productName };
   } catch (error) {

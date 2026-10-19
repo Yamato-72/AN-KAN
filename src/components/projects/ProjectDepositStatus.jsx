@@ -92,6 +92,7 @@ export function ProjectDepositStatus({ projectId }) {
           >
             <div className="flex items-center gap-3">
               <span className="font-medium text-gray-800">
+                {d.orderBatch > 0 ? `追加${d.orderBatch} ` : ""}
                 {d.depositNumber || i + 1}回目
               </span>
               {d.percentage ? (
@@ -100,7 +101,9 @@ export function ProjectDepositStatus({ projectId }) {
               {d.amountJPY ? (
                 <span className="text-sm text-gray-600">{yen(d.amountJPY)}</span>
               ) : d.amountUSD ? (
-                <span className="text-sm text-gray-600">${d.amountUSD}</span>
+                <span className="text-sm text-gray-600">
+                  ${Number(d.amountUSD).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
               ) : null}
             </div>
             <div>
