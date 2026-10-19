@@ -95,6 +95,7 @@ export const NewProjectModal = ({
 
   // クライアント候補機能
   const [clients, setClients] = useState([]);
+  const [staffList, setStaffList] = useState([]); // 社内担当者の選択肢
   const [showClientSuggestions, setShowClientSuggestions] = useState(false);
   const [filteredClients, setFilteredClients] = useState([]);
 
@@ -109,6 +110,22 @@ export const NewProjectModal = ({
   useEffect(() => {
     setIsEditing(editProject !== null);
   }, [editProject]);
+
+  // 社内担当者一覧を取得（ドロップダウン用）
+  const fetchStaffList = async () => {
+    try {
+      const response = await fetch("/api/staff");
+      if (response.ok) {
+        const data = await response.json();
+        setStaffList(data.filter((s) => s.code)); // コード持ちのみ
+      }
+    } catch (error) {
+      console.error("担当者一覧の取得に失敗:", error);
+    }
+  };
+  useEffect(() => {
+    if (show) fetchStaffList();
+  }, [show]);
 
   // クライアント一覧を取得
   const fetchClients = async () => {
@@ -618,6 +635,32 @@ export const NewProjectModal = ({
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
               required
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              社内担当者
+            </label>
+            <select
+              value={formData.assigned_team_member || ""}
+              onChange={(e) =>
+                handleInputChange(
+                  "assigned_team_member",
+                  e.target.value || null,
+                )
+              }
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
+            >
+              <option value="">担当者なし</option>
+              {staffList.map((s) => (
+                <option key={s.code} value={s.code}>
+                  {s.name}（{s.code}）
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-gray-400 mt-1">
+              新規作成時は自動で自分が入ります。過去案件の整備や担当変更はここで
+            </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
