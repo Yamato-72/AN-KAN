@@ -130,18 +130,26 @@ export async function POST(request) {
           }
         }
 
+        // 登録・更新日時を案件の実日付に合わせる
+        //（「今日取り込んだ＝更新日が今日」になると、更新日順の一覧で
+        //   過去案件が先頭に湧いて皆の表示を乱すため。未来の納期は今日止まり）
+        let historicalTs =
+          projectData.delivery_date || projectData.installation_date || new Date();
+        const nowTs = new Date();
+        if (historicalTs > nowTs) historicalTs = nowTs;
+
         // データベースに挿入
         const insertResult = await sql`
           INSERT INTO projects (
             ad_number, project_name, client_name, client_id, status, completion_percentage,
             delivery_date, installation_date, installation_contractor, remarks, assigned_team_member,
-            drive_folder_link
+            drive_folder_link, created_at, updated_at
           ) VALUES (
             ${projectData.ad_number}, ${projectData.project_name}, ${projectData.client_name}, ${clientId},
             ${projectData.status}, ${projectData.completion_percentage}, ${projectData.delivery_date},
             ${projectData.installation_date}, ${projectData.installation_contractor}, 
             ${projectData.remarks}, ${projectData.assigned_team_member},
-            ${driveLink}
+            ${driveLink}, ${historicalTs}, ${historicalTs}
           ) RETURNING id, project_name
         `;
 
