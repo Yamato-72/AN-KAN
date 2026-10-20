@@ -9,6 +9,7 @@ import {
   Flag,
   Banknote,
   Package,
+  TrendingUp,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { createSecretUrl } from "@/utils/secretPath";
@@ -54,6 +55,12 @@ export const Sidebar = () => {
       })(),
       isActive: pathname.includes("/analysis/"),
       title: "分析",
+    },
+    {
+      icon: TrendingUp,
+      href: createSecretUrl("/analytics"),
+      isActive: pathname.includes("/analytics"),
+      title: "経営分析",
     },
     {
       icon: Building,
