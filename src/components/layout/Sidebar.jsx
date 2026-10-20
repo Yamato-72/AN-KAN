@@ -60,7 +60,7 @@ export const Sidebar = () => {
       icon: TrendingUp,
       href: createSecretUrl("/analytics"),
       isActive: pathname.includes("/analytics"),
-      title: "経営分析",
+      title: "売上分析",
     },
     {
       icon: Building,

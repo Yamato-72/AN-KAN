@@ -54,7 +54,7 @@ export default function AnalyticsPage() {
   const params = useParams();
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [periodFilter, setPeriodFilter] = useState("all"); // ランキング等の対象期
+  const [periodFilter, setPeriodFilter] = useState(null); // 対象期（null=最新期を自動選択）
 
   useEffect(() => {
     fetch("/api/projects?folder=active")
@@ -100,13 +100,15 @@ export default function AnalyticsPage() {
     }));
   }, [revProjects, availablePeriods]);
 
-  // 選択期で絞った母集団（②③④に効く）
+  // 実際に使う期：未選択なら最新期
+  const effectivePeriod =
+    periodFilter ??
+    (availablePeriods.length ? availablePeriods[availablePeriods.length - 1] : null);
+
+  // 選択期で絞った母集団（サマリー・顧客・担当者・月次に効く）
   const scoped = useMemo(
-    () =>
-      periodFilter === "all"
-        ? revProjects
-        : revProjects.filter((p) => p._period === Number(periodFilter)),
-    [revProjects, periodFilter],
+    () => revProjects.filter((p) => p._period === Number(effectivePeriod)),
+    [revProjects, effectivePeriod],
   );
 
   // ② 顧客別ランキング TOP10
@@ -154,7 +156,7 @@ export default function AnalyticsPage() {
   const scopedTotal = scoped.reduce((a, p) => a + p._rev, 0);
   const maxClientRev = byClient[0]?.revenue || 1;
   const maxStaffRev = byStaff[0]?.revenue || 1;
-  const scopeLabel = periodFilter === "all" ? "全期間" : `第${periodFilter}期`;
+  const scopeLabel = effectivePeriod ? `第${effectivePeriod}期` : "-";
 
   if (loading) {
     return (
@@ -176,16 +178,13 @@ export default function AnalyticsPage() {
           >
             <ArrowLeft className="h-5 w-5" />
           </a>
-          <h1 className="text-xl font-bold text-gray-800">経営分析</h1>
+          <h1 className="text-xl font-bold text-gray-800">売上分析</h1>
           <select
-            className={`ml-auto border rounded-lg px-3 py-1.5 text-sm bg-white ${
-              periodFilter !== "all" ? "border-blue-400 text-blue-700 font-semibold" : "border-gray-300"
-            }`}
-            value={periodFilter}
+            className="ml-auto border border-gray-300 rounded-lg px-3 py-1.5 text-sm bg-white font-semibold"
+            value={effectivePeriod ?? ""}
             onChange={(e) => setPeriodFilter(e.target.value)}
-            title="顧客・担当者・月次の対象期"
+            title="表示する期"
           >
-            <option value="all">全期間</option>
             {[...availablePeriods].reverse().map((n) => (
               <option key={n} value={n}>第{n}期</option>
             ))}
@@ -219,7 +218,7 @@ export default function AnalyticsPage() {
         <div className="bg-white border border-gray-200 rounded-xl p-5 mb-5">
           <h2 className="text-sm font-bold text-gray-700 flex items-center gap-2 mb-4">
             <TrendingUp className="h-4 w-4 text-gray-400" />
-            期別売上推移（全期間固定）
+            期別売上推移（全期）
           </h2>
           <div className="w-full h-64">
             <ResponsiveContainer width="100%" height="100%">
@@ -325,7 +324,7 @@ export default function AnalyticsPage() {
             </ResponsiveContainer>
           </div>
           <p className="text-xs text-gray-400 mt-2">
-            全期間選択時は全期の合算。繁忙月の傾向確認用（納期ベース）
+            繁忙月の傾向確認用（納期ベース・7月始まり）
           </p>
         </div>
       </div>
