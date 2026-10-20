@@ -16,6 +16,26 @@ export async function POST(request) {
       imported: [],
     };
 
+    // 顧客名の正規化：表記ゆれを吸収して同一顧客と判定するための変換
+    //   （株）(株) → 株式会社 ／ （有）(有) → 有限会社 ／ 空白・全半角の差を無視
+    const normalizeClientName = (name) =>
+      String(name || "")
+        .replace(/[（(]株[）)]/g, "株式会社")
+        .replace(/[（(]有[）)]/g, "有限会社")
+        .replace(/[\s\u3000]+/g, "") // 半角・全角スペース除去
+        .trim();
+
+    // 既存顧客を一度だけ読み込み、正規化名→(id, 正式名) の対応表を作る
+    //   同じCSV内で表記ゆれがあっても、1人の顧客にまとまる
+    const clientRows = await sql`SELECT id, client_name FROM clients`;
+    const clientMap = new Map();
+    clientRows.forEach((c) => {
+      const key = normalizeClientName(c.client_name);
+      if (key && !clientMap.has(key)) {
+        clientMap.set(key, { id: c.id, name: c.client_name });
+      }
+    });
+
     // 各行を処理
     for (let i = 0; i < csvData.length; i++) {
       const row = csvData[i];
@@ -137,15 +157,20 @@ export async function POST(request) {
           }
         }
 
-        // 顧客の紐付け：新規登録と同じ流儀で、同名の顧客を流用 or 新規作成
-        //（画面の取引先名は顧客テーブルから表示されるため、紐付けが無いと空に見える）
+        // 顧客の紐付け：表記ゆれ（（株）⇔株式会社・空白差）を吸収して照合
+        //   既存顧客が見つかれば流用し、案件の表示名も台帳の正式名に揃える
         let clientId = null;
         if (projectData.client_name) {
-          const existingClient = await sql`
-            SELECT id FROM clients WHERE client_name = ${projectData.client_name} LIMIT 1
-          `;
-          if (existingClient.length > 0) {
-            clientId = existingClient[0].id;
+          const key = normalizeClientName(projectData.client_name);
+          const hit = clientMap.get(key);
+          if (hit) {
+            clientId = hit.id;
+            if (hit.name !== projectData.client_name) {
+              results.warnings.push(
+                `行 ${rowNumber}: 取引先「${projectData.client_name}」を既存の「${hit.name}」と同一とみなして紐付けました`,
+              );
+              projectData.client_name = hit.name; // 表示名を台帳の正式名に統一
+            }
           } else {
             const newClient = await sql`
               INSERT INTO clients (client_name, company_address, phone_number, contact_person, email)
@@ -153,6 +178,7 @@ export async function POST(request) {
               RETURNING id
             `;
             clientId = newClient[0].id;
+            clientMap.set(key, { id: clientId, name: projectData.client_name });
           }
         }
 
