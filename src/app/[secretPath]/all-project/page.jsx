@@ -31,6 +31,7 @@ export default function AllProjectsPage() {
 
   // ✅ 並べ替え state（これが無いとソートが動かない）
   const [sortKey, setSortKey] = useState("updated_at"); // default: 更新日
+  const [periodFilter, setPeriodFilter] = useState("all"); // 期の絞り込み（全期間がデフォルト）
   const [sortOrder, setSortOrder] = useState("desc"); // default: 新しい順
 
   // Fetch all projects
@@ -62,6 +63,28 @@ export default function AllProjectsPage() {
     fetchProjects();
   }, []);
 
+  // 案件の「期」を計算（7月始まり・1期=2019年7月〜）
+  //   判定日は 納期 → 問い合わせ日 → 作成日 の優先順
+  const periodOf = (project) => {
+    const dateStr =
+      project.delivery_date || project.inquiry_date || project.created_at;
+    if (!dateStr) return null;
+    const d = new Date(dateStr);
+    if (isNaN(d)) return null;
+    const fyStartYear = d.getMonth() >= 6 ? d.getFullYear() : d.getFullYear() - 1;
+    return fyStartYear - 2019 + 1; // 1期 = 2019年7月〜
+  };
+
+  // データに実在する期の一覧（新しい順）。選択肢はここから自動生成
+  const availablePeriods = useMemo(() => {
+    const set = new Set();
+    (projects || []).forEach((p) => {
+      const n = periodOf(p);
+      if (n && n > 0) set.add(n);
+    });
+    return [...set].sort((a, b) => b - a);
+  }, [projects]);
+
   const filteredProjects = useMemo(() => {
     if (!projects || projects.length === 0) return [];
 
@@ -89,7 +112,11 @@ export default function AllProjectsPage() {
         (project.ad_number != null &&
           project.ad_number.toString().includes(searchQuery));
 
-      return matchesFilter && matchesSearch;
+      // 期の絞り込み
+      const matchesPeriod =
+        periodFilter === "all" || periodOf(project) === Number(periodFilter);
+
+      return matchesFilter && matchesSearch && matchesPeriod;
     });
 
     const keyMap = {
@@ -153,7 +180,7 @@ export default function AllProjectsPage() {
     });
 
     return sorted; // ← ★ これが無いと絶対に反映されない
-  }, [projects, selectedFilter, searchQuery, sortKey, sortOrder]);
+  }, [projects, selectedFilter, searchQuery, sortKey, sortOrder, periodFilter]);
 
   return (
     <div className="min-h-screen bg-gray-50 font-inter">
@@ -187,6 +214,23 @@ export default function AllProjectsPage() {
               </div>
 
               <div className="flex items-center gap-2">
+                {/* 期の絞り込み（データに実在する期だけが選択肢に出る） */}
+                <select
+                  className={`border rounded px-3 py-1 text-sm bg-white ${
+                    periodFilter !== "all" ? "border-blue-400 text-blue-700 font-semibold" : ""
+                  }`}
+                  value={periodFilter}
+                  onChange={(e) => setPeriodFilter(e.target.value)}
+                  title="期で絞り込み（7月始まり）"
+                >
+                  <option value="all">全期間</option>
+                  {availablePeriods.map((n) => (
+                    <option key={n} value={n}>
+                      第{n}期
+                    </option>
+                  ))}
+                </select>
+
                 {/* ✅ 並べ替え */}
                 <select
                   className="border rounded px-3 py-1 text-sm bg-white"
