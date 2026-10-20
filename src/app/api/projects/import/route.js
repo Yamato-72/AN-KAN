@@ -91,6 +91,19 @@ export async function POST(request) {
           assigned_team_member: assignedTeamMemberCode,
         };
 
+        // 売上（任意列）：数値のみ受け付け。変な値は警告して未設定扱い
+        let revenueValue = null;
+        if (row.revenue !== undefined && String(row.revenue).trim() !== "") {
+          const r = parseFloat(String(row.revenue).replace(/[,¥￥\s]/g, ""));
+          if (Number.isNaN(r) || r < 0) {
+            results.warnings.push(
+              `行 ${rowNumber}: 売上 "${row.revenue}" が数値として読めないため未設定にしました`,
+            );
+          } else {
+            revenueValue = r;
+          }
+        }
+
         // ステータスの検証
         // 現行の5段階ステータス（DBのchk_projects_status制約と一致させること）
         const validStatuses = [
@@ -156,13 +169,13 @@ export async function POST(request) {
           INSERT INTO projects (
             ad_number, project_name, client_name, client_id, status, completion_percentage,
             delivery_date, installation_date, installation_contractor, remarks, product_number,
-            assigned_team_member, drive_folder_link, created_at, updated_at
+            assigned_team_member, drive_folder_link, revenue, created_at, updated_at
           ) VALUES (
             ${projectData.ad_number}, ${projectData.project_name}, ${projectData.client_name}, ${clientId},
             ${projectData.status}, ${projectData.completion_percentage}, ${projectData.delivery_date},
             ${projectData.installation_date}, ${projectData.installation_contractor}, 
             ${projectData.remarks}, ${projectData.product_number}, ${projectData.assigned_team_member},
-            ${driveLink}, ${historicalTs}, ${historicalTs}
+            ${driveLink}, ${revenueValue}, ${historicalTs}, ${historicalTs}
           ) RETURNING id, project_name
         `;
 
