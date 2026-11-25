@@ -51,10 +51,21 @@ export function ProjectDepositStatus({ projectId }) {
       </div>
     );
   }
+  // 入荷予定日（支払ナビで入力。倉庫に届く予定の日）
+  const arrival = data.arrivalDate ? (
+    <div className="mb-3 text-sm">
+      <span className="text-gray-500">入荷予定日：</span>
+      <span className="font-semibold text-amber-700">{data.arrivalDate.replace(/-/g, "/")}</span>
+    </div>
+  ) : null;
+
   if (!data.found || !data.deposits || data.deposits.length === 0) {
     return (
-      <div className="text-sm text-gray-500 bg-gray-50 rounded-lg p-4">
-        この案件の発注支払データは支払ナビにまだありません。
+      <div>
+        {arrival}
+        <div className="text-sm text-gray-500 bg-gray-50 rounded-lg p-4">
+          この案件の発注支払データは支払ナビにまだありません。
+        </div>
       </div>
     );
   }
@@ -67,6 +78,7 @@ export function ProjectDepositStatus({ projectId }) {
 
   return (
     <div>
+      {arrival}
       {/* サマリ */}
       <div className="flex items-center gap-3 mb-4">
         {allPaid ? (

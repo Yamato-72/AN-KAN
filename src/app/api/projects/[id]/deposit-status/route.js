@@ -1,5 +1,5 @@
 import sql from "@/app/api/utils/sql";
-import { getDepositStatus } from "@/app/api/utils/paymentSheet";
+import { getDepositStatus, getArrivalDate } from "@/app/api/utils/paymentSheet";
 
 // ============================================================
 // 案件の「発注デポジット支払状況」を返す窓口
@@ -33,10 +33,20 @@ export async function GET(request, { params }) {
       return Response.json({ error: result.error }, { status: 502 });
     }
 
+    // 入荷予定日（支払ナビで和田さんが入れる日付）も一緒に返す。読めなくても支払状況は出す
+    let arrivalDate = "";
+    try {
+      const a = await getArrivalDate({ prefix, number: project.ad_number });
+      if (a.ok) arrivalDate = a.date;
+    } catch (e) {
+      console.error("入荷予定日の取得エラー:", e);
+    }
+
     return Response.json({
       found: result.found,
       deposits: result.deposits || [],
       productName: result.productName || "",
+      arrivalDate,
     });
   } catch (error) {
     console.error("deposit-status エラー:", error);

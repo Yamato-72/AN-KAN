@@ -166,3 +166,49 @@ export async function getDepositStatus({ prefix, number }) {
     return { found: false, error: error.message };
   }
 }
+
+// ============================================================
+// 入荷予定日（支払ナビ「案件」シートのQ列）を読む
+//   - 和田さんが支払ナビの「グループ編集」で入れる、倉庫に届く予定の日
+//   - 同じ案件番号の行が複数ある（製品・発注ロット違い）ときは、いちばん早い日を返す
+//   - spreadsheetId を渡すとそのシートを読む（テスト環境用）
+//   戻り値: { ok: bool, date: "YYYY-MM-DD" | "", error? }
+// ============================================================
+export async function getArrivalDate({ prefix, number, spreadsheetId }) {
+  const serviceAccountKey = process.env.GOOGLE_SERVICE_ACCOUNT_KEY;
+  if (!serviceAccountKey) return { ok: false, error: "サービスアカウントが設定されていません" };
+  let credentials;
+  try {
+    credentials = JSON.parse(serviceAccountKey);
+  } catch (e) {
+    return { ok: false, error: "サービスアカウントキーの形式が不正です" };
+  }
+  const accessToken = await getSheetsAccessToken(credentials);
+  const range = `${PROJECT_SHEET_NAME}!A2:Q`;
+  const res = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId || DATA_SPREADSHEET_ID}/values/${encodeURIComponent(range)}`,
+    { headers: { Authorization: `Bearer ${accessToken}` } },
+  );
+  if (!res.ok) {
+    const errorText = await res.text();
+    return { ok: false, error: `案件シートの読み取りに失敗: ${res.status} ${errorText.slice(0, 200)}` };
+  }
+  const rows = (await res.json()).values || [];
+  const targetNum = parseInt(number, 10);
+  const dates = rows
+    .filter((r) => {
+      // 旧形式（B列に "AD-1234"）にも対応
+      const b = String(r[1] || "");
+      const old = b.match(/^([A-Za-z]+)-0*(\d+)$/);
+      const p = old ? old[1] : b.replace(/-$/, "") || "AD";
+      const n = old ? parseInt(old[2], 10) : parseInt(r[2], 10);
+      return p.toUpperCase() === String(prefix).toUpperCase() && n === targetNum;
+    })
+    .map((r) => {
+      const m = String(r[16] || "").trim().match(/^(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})/);
+      return m ? `${m[1]}-${m[2].padStart(2, "0")}-${m[3].padStart(2, "0")}` : "";
+    })
+    .filter(Boolean)
+    .sort();
+  return { ok: true, date: dates[0] || "" };
+}
