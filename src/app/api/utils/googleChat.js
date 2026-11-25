@@ -75,8 +75,12 @@ async function listSpaces() {
 //   - 「AD-1666」で「AD-16660」に当たらないよう、番号の後ろが数字でないことを確認
 export async function findProjectSpace(prefix, number) {
   const re = new RegExp(`(^|[^A-Za-z])${prefix}[-\\s]?0*${parseInt(number, 10)}(?!\\d)`, "i");
-  const spaces = await listSpaces();
-  const hits = spaces.filter((s) => re.test(s.displayName));
+  let hits = (await listSpaces()).filter((s) => re.test(s.displayName));
+  // 見つからないときは、スペース名の変更や新規追加を反映するため一覧を取り直す
+  if (!hits.length) {
+    clearSpaceCache();
+    hits = (await listSpaces()).filter((s) => re.test(s.displayName));
+  }
   return { space: hits[0] || null, count: hits.length };
 }
 
