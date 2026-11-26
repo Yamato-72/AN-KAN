@@ -4,7 +4,6 @@ import {
   Users,
   X,
   Wrench,
-  Home,
   CalendarDays,
   Banknote,
   FileText,
@@ -16,7 +15,6 @@ import {
 // ほかのナビ（YSナビのキーと同じ色・同じ順番：業務の流れ）
 const NAVI = "https://yamato-72.github.io";
 const NAVI_ITEMS = [
-  { title: "YSナビ", href: `${NAVI}/procurement-system/home.html`, color: "#161616", edge: "#000000", fg: "#ffd21f", icon: Home },
   { title: "納期", href: `${NAVI}/ys-tools/deliverytime.html`, color: "#e0823f", edge: "#a95a22", fg: "#161616", icon: CalendarDays },
   { title: "支払", href: `${NAVI}/procurement-system/index.html`, color: "#e9bd3c", edge: "#b08a1c", fg: "#161616", icon: FileText },
   { title: "在庫", href: `${NAVI}/procurement-system/inventory.html`, color: "#c9995c", edge: "#96703d", fg: "#161616", icon: Package },
