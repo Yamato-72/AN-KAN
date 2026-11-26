@@ -1,1 +1,36 @@
 @import "tailwindcss";
+
+/* ============================================================
+   AN-KAN の土台（YSナビ・各ナビと同じ考え方にそろえる）
+   ・文字：Zen Kaku Gothic New（数字や番号は IBM Plex Mono）
+   ・グレー：少し温かみのあるグレーに置き換え（全画面に一度に効く）
+   ・青の「主ボタン」（blue-600/700）：墨に置き換え。色は意味のあるところだけに残す
+   ・AN-KANの色：マットな赤（YSナビのキーと同じ）
+   ============================================================ */
+@theme {
+  --font-sans: "Zen Kaku Gothic New", "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  --color-gray-50: #f6f5f1;
+  --color-gray-100: #eeede8;
+  --color-gray-200: #e2e0d9;
+  --color-gray-300: #cfccc4;
+  --color-gray-400: #9e9b93;
+  --color-gray-500: #7a776f;
+  --color-gray-600: #5c5a54;
+  --color-gray-700: #3f3d39;
+  --color-gray-800: #2a2926;
+  --color-gray-900: #161616;
+
+  --color-blue-600: #161616;
+  --color-blue-700: #000000;
+
+  --color-ankan: #c8463a;
+  --color-ankan-dark: #8e2c23;
+}
+
+html,
+body {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}

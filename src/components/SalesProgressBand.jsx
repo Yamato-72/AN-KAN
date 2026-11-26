@@ -44,7 +44,7 @@ export const SalesProgressBand = () => {
   const ahead = data.diff >= 0;
 
   return (
-    <div className="flex items-center gap-3 px-4 lg:pl-20 py-1.5 bg-white border-b border-gray-100">
+    <div className="flex items-center gap-3 px-4 lg:pl-20 py-1.5 bg-white border-b border-gray-100 overflow-hidden">
       <span className="text-[11px] font-semibold text-gray-500 whitespace-nowrap">
         第{data.periodNo}期売上
       </span>
@@ -59,7 +59,7 @@ export const SalesProgressBand = () => {
               }`}
             >
               <div
-                className="h-full bg-[#D6001C]"
+                className="h-full bg-ankan"
                 style={{ width: `${w}%` }}
               />
             </div>

@@ -22,6 +22,13 @@ export default function RootLayout({ children }) {
     <html lang="ja">
       <head>
         <title>AN-KAN - YS案件管理</title>
+        <meta name="theme-color" content="#c8463a" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=IBM+Plex+Mono:wght@400;500&display=swap"
+        />
       </head>
       <body>
         <QueryClientProvider client={queryClient}>

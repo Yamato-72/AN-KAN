@@ -10,6 +10,10 @@ import {
   Banknote,
   Package,
   TrendingUp,
+  Home,
+  CalendarDays,
+  CheckSquare,
+  BookOpen,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { createSecretUrl } from "@/utils/secretPath";
@@ -74,18 +78,17 @@ export const Sidebar = () => {
       isActive: pathname.startsWith(createSecretUrl("/contractors")),
       title: "設置業者",
     },
-    {
-      icon: Banknote,
-      href: "https://yamato-72.github.io/procurement-system/index.html",
-      isActive: false, // 外部サイト
-      title: "支払ナビ",
-    },
-    {
-      icon: Package,
-      href: "https://yamato-72.github.io/procurement-system/inventory.html",
-      isActive: false, // 外部サイト
-      title: "在庫ナビ",
-    },
+  ];
+
+  // ほかのナビ（YSナビのキーと同じ色・同じ順番：業務の流れ）
+  const NAVI = "https://yamato-72.github.io";
+  const naviItems = [
+    { title: "YSナビ（入口）", href: `${NAVI}/procurement-system/home.html`, color: "#161616", fg: "#ffd21f", icon: Home },
+    { title: "納期ナビ", href: `${NAVI}/ys-tools/deliverytime.html`, color: "#e0823f", fg: "#161616", icon: CalendarDays },
+    { title: "支払ナビ", href: `${NAVI}/procurement-system/index.html`, color: "#e9bd3c", fg: "#161616", icon: Banknote },
+    { title: "在庫ナビ", href: `${NAVI}/procurement-system/inventory.html`, color: "#c9995c", fg: "#161616", icon: Package },
+    { title: "品質ナビ", href: `${NAVI}/procurement-system/quality.html`, color: "#4f9c95", fg: "#ffffff", icon: CheckSquare },
+    { title: "製品ナビ", href: `${NAVI}/procurement-system/genba.html`, color: "#4f72a8", fg: "#ffffff", icon: BookOpen },
   ];
 
   const handleNavigation = (href) => {
@@ -93,20 +96,42 @@ export const Sidebar = () => {
   };
 
   return (
-    <aside className="hidden lg:flex flex-col items-center gap-8 py-8 w-16 border-r border-gray-200 fixed left-0 top-0 h-full z-20 bg-white">
+    <aside className="hidden lg:flex flex-col items-center gap-6 pt-24 pb-6 w-16 border-r border-gray-200 fixed left-0 top-0 h-full z-20 bg-white">
       {menuItems.map(({ icon: Icon, href, isActive, title }, index) => (
-        <div key={index} className="relative" title={title}>
+        <button
+          key={index}
+          type="button"
+          title={title}
+          aria-label={title}
+          onClick={() => handleNavigation(href)}
+          className="group relative grid place-items-center h-9 w-9 rounded-lg transition-colors hover:bg-gray-100"
+        >
           <Icon
-            onClick={() => handleNavigation(href)}
-            className={`h-5 w-5 cursor-pointer transition-colors ${
-              isActive ? "text-blue-600" : "text-gray-400 hover:text-gray-600"
+            className={`h-5 w-5 transition-colors ${
+              isActive ? "text-ankan" : "text-gray-400 group-hover:text-gray-700"
             }`}
           />
           {isActive && (
-            <div className="absolute -left-2 top-0 bg-blue-600 h-6 w-1 rounded-r"></div>
+            <span className="absolute -left-[14px] top-1.5 bg-ankan h-6 w-1 rounded-r"></span>
           )}
-        </div>
+        </button>
       ))}
+
+      {/* ほかのナビ：小さな色つきのキー */}
+      <div className="mt-2 pt-5 border-t border-gray-200 flex flex-col items-center gap-2.5">
+        {naviItems.map(({ title, href, color, fg, icon: Icon }) => (
+          <a
+            key={title}
+            href={href}
+            title={title}
+            aria-label={title}
+            className="grid place-items-center h-8 w-8 rounded-lg transition-transform hover:-translate-y-0.5 active:translate-y-[2px]"
+            style={{ background: color, color: fg, boxShadow: "inset 0 1px 0 rgba(255,255,255,.35), 0 3px 0 rgba(0,0,0,.25)" }}
+          >
+            <Icon className="h-4 w-4" />
+          </a>
+        ))}
+      </div>
 
       <div className="mt-auto">
         <Settings className="h-5 w-5 text-gray-400 hover:text-gray-600 cursor-pointer" />

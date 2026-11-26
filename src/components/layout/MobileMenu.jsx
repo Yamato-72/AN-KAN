@@ -38,7 +38,7 @@ export const MobileMenu = ({ show, onClose }) => {
                   : "/x7k9m3n8q2v5w1z4p6j9r8y3e2u7i5o1a9s8d6f3g7h2j4k8l3m9n6q2w5e8r1t7y4u2i9o6p3/",
               )
             }
-            className="w-full flex items-center gap-3 p-3 rounded-lg bg-blue-50 text-blue-700"
+            className="w-full flex items-center gap-3 p-3 rounded-lg bg-gray-100 text-gray-900 font-bold"
           >
             <Monitor className="h-5 w-5" />
             <span>ダッシュボード</span>
