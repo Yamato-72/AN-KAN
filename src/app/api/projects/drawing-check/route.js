@@ -3,10 +3,10 @@ import { findProjectSpace, postToSpace, getServiceToken } from "@/app/api/utils/
 import { formatProjectNumber } from "@/lib/prefixes";
 
 // ============================================================
-// 案件フォルダに図面が入ったら、案件の Google Chat スペースへ知らせる窓口
+// 案件フォルダに図面・PL/CI が入ったら、案件の Google Chat スペースへ知らせる窓口
 //   - GAS（時間主導トリガー）が10分おきに GET / POST で呼ぶ。だれが何回呼んでも同じ結果になる
 //   - サービスアカウントで Drive を検索し、直近3日に追加・変更されたファイルのうち
-//     名前に「図面」または「drawing」（大文字小文字は問わない）が入ったものを拾う
+//     名前で種類を見分ける（KINDS）：図面 / drawing、PL / CI / packing list / commercial invoice
 //   - そのファイルが、AN-KAN が作った案件フォルダ（projects.drive_folder_id）の中
 //     または手動で貼ったフォルダリンクの中（下の階層でもOK）にあれば、その案件のスペースに1回だけ投稿する
 //   - 通知済みのファイルは drawing_seen 表に覚える。初めて動かしたときは
@@ -15,7 +15,26 @@ import { formatProjectNumber } from "@/lib/prefixes";
 // ============================================================
 
 const DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.readonly";
-const NAME_RE = /図面|drawing/i;
+// 名前で見分ける書類の種類（上から順に判定）
+//   PL / CI は大文字の単語として入っているときだけ（例 AD1844_PL.pdf、CI AD-1844.pdf）
+const KINDS = [
+  {
+    key: "shipping",
+    reStrict: /(^|[^A-Za-z])(PL|CI)([^A-Za-z]|$)/, // PL/CI は大文字だけ
+    reWords: /packing\s*list|commercial\s*invoice|パッキングリスト/i,
+    title: "国際配送の手配が完了しました（PL・CIが届きました）",
+    log: "PL・CIが追加されました",
+  },
+  {
+    key: "drawing",
+    reWords: /図面|drawing/i,
+    title: "図面が追加されました",
+    log: "図面が追加されました",
+  },
+];
+function kindOf(name) {
+  return KINDS.find((k) => (k.reStrict && k.reStrict.test(name)) || k.reWords.test(name)) || null;
+}
 const WINDOW_DAYS = 3;
 const FOLDER_MIME = "application/vnd.google-apps.folder";
 
@@ -28,11 +47,13 @@ async function ensureTable() {
     CREATE TABLE IF NOT EXISTS drawing_seen (
       file_id TEXT PRIMARY KEY,
       file_name TEXT NOT NULL DEFAULT '',
+      kind TEXT NOT NULL DEFAULT 'drawing',
       prefix TEXT,
       number INTEGER,
       seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `;
+  await sql`ALTER TABLE drawing_seen ADD COLUMN IF NOT EXISTS kind TEXT NOT NULL DEFAULT 'drawing'`;
 }
 
 async function driveGet(token, path, params) {
@@ -92,7 +113,9 @@ async function run(request) {
 
     // 2) 名前に「図面 / drawing」が入った最近のファイル
     const token = await getServiceToken(DRIVE_SCOPE);
-    const candidates = (await listRecentFiles(token)).filter((f) => NAME_RE.test(f.name || ""));
+    const candidates = (await listRecentFiles(token))
+      .map((f) => ({ ...f, kind: kindOf(f.name || "") }))
+      .filter((f) => f.kind);
 
     // 3) どの案件フォルダの中にあるか（親をたどる。たどった結果は覚えて使い回す）
     const parentCache = new Map();
@@ -125,60 +148,66 @@ async function run(request) {
     if (dry) {
       return json({
         message: "確認のみ（投稿・記録はしていません）",
-        found: found.map(({ file, project }) => ({ project: formatProjectNumber(project.prefix, project.ad_number), name: file.name })),
+        found: found.map(({ file, project }) => ({ project: formatProjectNumber(project.prefix, project.ad_number), kind: file.kind.key, name: file.name })),
       });
     }
 
     // 4) まだ通知していないものだけ残す（初回は覚えるだけ）
     await ensureTable();
-    const firstRun = Number((await sql`SELECT COUNT(*)::int AS n FROM drawing_seen`)[0].n) === 0;
+    // 種類ごとに「初めて動いた回」を判定（その回は覚えるだけで投稿しない）
+    const counts = await sql`SELECT kind, COUNT(*)::int AS n FROM drawing_seen GROUP BY kind`;
+    const seenKinds = new Set(counts.filter((r) => Number(r.n) > 0).map((r) => r.kind));
     const fresh = [];
+    let recordedOnly = 0;
     for (const item of found) {
       const ins = await sql`
-        INSERT INTO drawing_seen (file_id, file_name, prefix, number)
-        VALUES (${item.file.id}, ${item.file.name}, ${item.project.prefix}, ${item.project.ad_number})
+        INSERT INTO drawing_seen (file_id, file_name, kind, prefix, number)
+        VALUES (${item.file.id}, ${item.file.name}, ${item.file.kind.key}, ${item.project.prefix}, ${item.project.ad_number})
         ON CONFLICT (file_id) DO NOTHING
         RETURNING file_id
       `;
-      if (ins.length) fresh.push(item);
-    }
-    if (firstRun) {
-      return json({ message: `初回のため、今ある図面 ${fresh.length} 件を記録だけしました（通知なし）` });
+      if (!ins.length) continue;
+      if (seenKinds.has(item.file.kind.key)) fresh.push(item);
+      else recordedOnly++;
     }
 
-    // 5) 案件ごとにまとめて1回投稿
+    // 5) 案件×種類ごとにまとめて1回投稿
     const byProject = new Map();
     for (const item of fresh) {
-      const key = item.project.id;
-      if (!byProject.has(key)) byProject.set(key, { project: item.project, files: [] });
+      const key = `${item.project.id}:${item.file.kind.key}`;
+      if (!byProject.has(key)) byProject.set(key, { project: item.project, kind: item.file.kind, files: [] });
       byProject.get(key).files.push(item.file);
     }
     const results = [];
-    for (const { project, files } of byProject.values()) {
+    for (const { project, kind, files } of byProject.values()) {
       const label = formatProjectNumber(project.prefix, project.ad_number);
       const lines = files.map((f) => `・${f.name}\n${f.webViewLink || `https://drive.google.com/file/d/${f.id}/view`}`);
-      const text = `${label} に図面が追加されました\n${lines.join("\n")}`;
+      const text = `${label} ${kind.title}\n${lines.join("\n")}`;
 
       await sql`
         INSERT INTO project_activities (project_id, activity_type, description)
-        VALUES (${project.id}, 'drawing_added', ${`図面が追加されました：${files.map((f) => f.name).join("、")}`})
+        VALUES (${project.id}, ${kind.key === "drawing" ? "drawing_added" : "shipping_docs_added"}, ${`${kind.log}：${files.map((f) => f.name).join("、")}`})
       `.catch((e) => console.error("活動ログの記録に失敗:", e));
 
       const { space } = await findProjectSpace(project.prefix, project.ad_number);
       if (!space) {
-        results.push({ project: label, files: files.length, posted: false, reason: "Chatスペースが見つかりません" });
+        results.push({ project: label, kind: kind.key, files: files.length, posted: false, reason: "Chatスペースが見つかりません" });
         continue;
       }
       try {
         await postToSpace(space.name, text);
-        results.push({ project: label, files: files.length, posted: true, space: space.displayName });
+        results.push({ project: label, kind: kind.key, files: files.length, posted: true, space: space.displayName });
       } catch (e) {
         // 投稿に失敗したら、次回もう一度送れるよう記録を消す
         for (const f of files) await sql`DELETE FROM drawing_seen WHERE file_id = ${f.id}`;
-        results.push({ project: label, files: files.length, posted: false, reason: String(e.message || e) });
+        results.push({ project: label, kind: kind.key, files: files.length, posted: false, reason: String(e.message || e) });
       }
     }
-    return json({ message: results.length ? "通知しました" : "新しい図面はありません", results });
+    return json({
+      message: results.length ? "通知しました" : "新しい書類はありません",
+      recordedOnly: recordedOnly ? `初回のため ${recordedOnly} 件は記録だけしました（通知なし）` : undefined,
+      results,
+    });
   } catch (error) {
     console.error("図面の通知エラー:", error);
     return json({ error: "図面の確認に失敗しました", detail: String(error.message || error) }, 500);
