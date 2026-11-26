@@ -8,7 +8,7 @@ import { formatProjectNumber } from "@/lib/prefixes";
 //   - サービスアカウントで Drive を検索し、直近3日に追加・変更されたファイルのうち
 //     名前に「図面」または「drawing」（大文字小文字は問わない）が入ったものを拾う
 //   - そのファイルが、AN-KAN が作った案件フォルダ（projects.drive_folder_id）の中
-//     （下の階層でもOK）にあれば、その案件のスペースに1回だけ投稿する
+//     または手動で貼ったフォルダリンクの中（下の階層でもOK）にあれば、その案件のスペースに1回だけ投稿する
 //   - 通知済みのファイルは drawing_seen 表に覚える。初めて動かしたときは
 //     「今あるもの」を覚えるだけで投稿しない（過去の図面がまとめて流れないように）
 //   - ?dry=1 を付けると、投稿も記録もせずに「何が見つかったか」だけ返す（確認用）
@@ -76,11 +76,19 @@ async function run(request) {
   const dry = new URL(request.url).searchParams.get("dry") === "1";
   try {
     // 1) 案件フォルダの一覧（フォルダID → 案件）
+    //    AN-KANが作ったフォルダ（drive_folder_id）に加えて、
+    //    過去案件で手動・CSVで貼ったフォルダのリンク（…/folders/<ID>）も対象にする
     const projects = await sql`
-      SELECT id, COALESCE(prefix, 'AD') AS prefix, ad_number, drive_folder_id
-      FROM projects WHERE drive_folder_id IS NOT NULL AND drive_folder_id <> ''
+      SELECT id, COALESCE(prefix, 'AD') AS prefix, ad_number, drive_folder_id, drive_folder_link
+      FROM projects
+      WHERE COALESCE(drive_folder_id, '') <> '' OR COALESCE(drive_folder_link, '') <> ''
     `;
-    const folderToProject = new Map(projects.map((p) => [p.drive_folder_id, p]));
+    const folderToProject = new Map();
+    for (const p of projects) {
+      if (p.drive_folder_id) folderToProject.set(p.drive_folder_id, p);
+      const m = String(p.drive_folder_link || "").match(/\/folders\/([A-Za-z0-9_-]+)/);
+      if (m && !folderToProject.has(m[1])) folderToProject.set(m[1], p);
+    }
 
     // 2) 名前に「図面 / drawing」が入った最近のファイル
     const token = await getServiceToken(DRIVE_SCOPE);
