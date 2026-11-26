@@ -207,13 +207,14 @@ export default function AllProjectsPage() {
 
         <div className="p-4 lg:p-6">
           <div className="mb-6">
-            <div className="flex items-center justify-between gap-3">
-              <div>
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <div className="min-w-0">
                 <h1 className="text-2xl font-bold text-gray-900 mb-2">全プロジェクト</h1>
                 <p className="text-gray-600">すべてのプロジェクトを表示しています</p>
               </div>
 
-              <div className="flex items-center gap-2">
+              {/* スマホでは見出しの下に回り込む（横に詰めると見出しが縦書きのようになっていた） */}
+              <div className="flex flex-wrap items-center gap-2">
                 {/* 期の絞り込み（データに実在する期だけが選択肢に出る） */}
                 <select
                   className={`border rounded px-3 py-1 text-sm bg-white ${
