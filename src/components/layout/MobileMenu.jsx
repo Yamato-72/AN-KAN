@@ -2,12 +2,26 @@ import {
   Monitor,
   Building,
   Users,
-  FileText,
-  BarChart3,
-  Settings,
   X,
   Wrench,
+  Home,
+  CalendarDays,
+  Banknote,
+  Package,
+  CheckSquare,
+  BookOpen,
 } from "lucide-react";
+
+// ほかのナビ（YSナビのキーと同じ色・同じ順番：業務の流れ）
+const NAVI = "https://yamato-72.github.io";
+const NAVI_ITEMS = [
+  { title: "YSナビ", href: `${NAVI}/procurement-system/home.html`, color: "#161616", fg: "#ffd21f", icon: Home },
+  { title: "納期", href: `${NAVI}/ys-tools/deliverytime.html`, color: "#e0823f", fg: "#161616", icon: CalendarDays },
+  { title: "支払", href: `${NAVI}/procurement-system/index.html`, color: "#e9bd3c", fg: "#161616", icon: Banknote },
+  { title: "在庫", href: `${NAVI}/procurement-system/inventory.html`, color: "#c9995c", fg: "#161616", icon: Package },
+  { title: "品質", href: `${NAVI}/procurement-system/quality.html`, color: "#4f9c95", fg: "#ffffff", icon: CheckSquare },
+  { title: "製品", href: `${NAVI}/procurement-system/genba.html`, color: "#4f72a8", fg: "#ffffff", icon: BookOpen },
+];
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 
 export const MobileMenu = ({ show, onClose }) => {
@@ -22,7 +36,7 @@ export const MobileMenu = ({ show, onClose }) => {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden">
-      <div className="bg-white w-64 h-full shadow-xl">
+      <div className="bg-white w-72 h-full shadow-xl overflow-y-auto pb-8">
         <div className="flex items-center justify-between p-4 border-b">
           <h2 className="text-lg font-semibold text-gray-700">メニュー</h2>
           <button onClick={onClose}>
@@ -76,19 +90,25 @@ export const MobileMenu = ({ show, onClose }) => {
             <Wrench className="h-5 w-5" />
             <span>設置業者</span>
           </button>
-          <div className="flex items-center gap-3 p-3 rounded-lg text-gray-600 hover:bg-gray-50">
-            <FileText className="h-5 w-5" />
-            <span>ドキュメント</span>
-          </div>
-          <div className="flex items-center gap-3 p-3 rounded-lg text-gray-600 hover:bg-gray-50">
-            <BarChart3 className="h-5 w-5" />
-            <span>レポート</span>
-          </div>
         </nav>
-        <div className="absolute bottom-4 left-4 right-4">
-          <div className="flex items-center gap-3 p-3 rounded-lg text-gray-600 hover:bg-gray-50">
-            <Settings className="h-5 w-5" />
-            <span>設定</span>
+
+        {/* ほかのナビ：小さな色つきのキー（押すと別タブ） */}
+        <div className="px-4 pb-4">
+          <div className="text-[11px] font-bold tracking-widest text-gray-400 mb-2">ほかのナビ</div>
+          <div className="grid grid-cols-3 gap-2.5">
+            {NAVI_ITEMS.map(({ title, href, color, fg, icon: Icon }) => (
+              <a
+                key={title}
+                href={href}
+                target="_blank"
+                rel="noopener"
+                className="flex flex-col justify-between h-16 rounded-xl p-2 text-[13px] font-bold active:translate-y-[2px] transition-transform"
+                style={{ background: color, color: fg, boxShadow: "inset 0 1px 0 rgba(255,255,255,.35), 0 3px 0 rgba(0,0,0,.25)" }}
+              >
+                <Icon className="h-4 w-4" />
+                <span>{title}</span>
+              </a>
+            ))}
           </div>
         </div>
       </div>
