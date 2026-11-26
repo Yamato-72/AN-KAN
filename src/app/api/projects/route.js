@@ -1,5 +1,6 @@
 import { query } from "@/lib/db";
 import { gzipJson } from "@/app/api/utils/gzipJson";
+import { overlaySales } from "@/app/api/utils/salesSheet";
 import { createGoogleDriveFolder } from "@/app/api/utils/googleDrive";
 import { normalizePrefix, initialStatusFor, formatProjectNumber } from "@/lib/prefixes";
 import { issueServiceToInventory } from "@/app/api/utils/inventorySheet";
@@ -132,7 +133,8 @@ export async function GET(request) {
     console.log("Unique projects count:", uniqueProjects.length);
     console.log("=== Projects API Debug End ===");
 
-    return gzipJson(request, uniqueProjects);
+    // 売上は支払ナビのシートが正。AN-KANの写しではなく、シートの値を重ねて返す
+    return gzipJson(request, await overlaySales(uniqueProjects));
   } catch (error) {
     console.error("Error fetching projects:", error);
     return Response.json(

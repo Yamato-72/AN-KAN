@@ -17,14 +17,14 @@ import { ArrowLeft, TrendingUp, Users, Building, CalendarRange } from "lucide-re
 // 経営分析ページ（/analytics）
 //   - 期をまたいだ売上の俯瞰：期別推移・顧客ランキング・担当者別・月次季節性
 //   - データ源はAN-KANの案件（失注・保留は除外）。売上はrevenue列
-//   - 注意：進行中の期はAN-KANに同期済みの売上のみ（確定はダッシュボード/支払ナビ）
+//   - 売上は /api/projects が支払ナビのシートを重ねて返す（AN-KANの写しは使わない）
 // ============================================================
 
 const FY_BASE_YEAR = 2019; // 1期 = 2019年7月〜
 
 // 案件の期を判定（納期 → 問い合わせ日 → 作成日）
 const periodOf = (p) => {
-  const dateStr = p.delivery_date || p.inquiry_date || p.created_at;
+  const dateStr = p.sales_date || p.delivery_date || p.inquiry_date || p.created_at; // 売上の納品日（支払ナビ）を最優先
   if (!dateStr) return null;
   const d = new Date(dateStr);
   if (isNaN(d)) return null;
@@ -34,7 +34,7 @@ const periodOf = (p) => {
 
 // 会計月インデックス（7月=0 … 6月=11）と表示名
 const fiscalMonthOf = (p) => {
-  const dateStr = p.delivery_date || p.inquiry_date || p.created_at;
+  const dateStr = p.sales_date || p.delivery_date || p.inquiry_date || p.created_at; // 売上の納品日（支払ナビ）を最優先
   if (!dateStr) return null;
   const d = new Date(dateStr);
   if (isNaN(d)) return null;
@@ -191,7 +191,7 @@ export default function AnalyticsPage() {
           </select>
         </div>
         <p className="text-xs text-gray-400 mb-5">
-          売上はAN-KANに記録された金額（過去期＝取り込み値・進行期＝支払ナビ同期分）。失注・保留は除外。進行中の期の確定数字はYSダッシュボードで。
+          売上は支払ナビ（販売案件売上シート）の金額。シートに無い過去の案件は、取り込み時の金額。期は売上の納品日で判定。失注・保留は除外。
         </p>
 
         {/* サマリー */}

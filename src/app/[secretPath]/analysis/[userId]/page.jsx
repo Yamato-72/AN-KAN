@@ -133,6 +133,7 @@ export default function AnalysisPage({ params }) {
 
       // ---- 月別（納品日 or 設置日 or 作成日）----
       const dateStr =
+        p.sales_date ||
         p.delivery_date ||
         p.installation_date ||
         p.created_at ||
@@ -189,6 +190,7 @@ export default function AnalysisPage({ params }) {
 
   allProjects.forEach((p) => {
     const dateStr =
+      p.sales_date ||
       p.delivery_date ||
       p.installation_date ||
       p.created_at ||

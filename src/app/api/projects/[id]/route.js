@@ -1,5 +1,6 @@
 import sql from "@/app/api/utils/sql";
 import { requireEditPermission } from "@/lib/authz";
+import { overlaySales } from "@/app/api/utils/salesSheet";
 
 export async function GET(request, { params }) {
   try {
@@ -32,33 +33,32 @@ export async function GET(request, { params }) {
       return Response.json({ error: "Project not found" }, { status: 404 });
     }
 
-    // Get project milestones
-    const milestones = await sql`
-      SELECT *
-      FROM project_milestones
-      WHERE project_id = ${id}
-      ORDER BY due_date ASC
-    `;
-
-    // Get project activities
-    const activities = await sql`
-      SELECT *
-      FROM project_activities pa
-      WHERE pa.project_id = ${id}
-      ORDER BY pa.created_at DESC
-      LIMIT 20
-    `;
-
-    // Get project documents
-    const documents = await sql`
-      SELECT *
-      FROM project_documents
-      WHERE project_id = ${id}
-      ORDER BY created_at DESC
-    `;
+    // 予定・活動・資料・売上（支払ナビのシート）は互いに関係ないので同時に読む（速さのため）
+    const [milestones, activities, documents, [withSales]] = await Promise.all([
+      sql`
+        SELECT *
+        FROM project_milestones
+        WHERE project_id = ${id}
+        ORDER BY due_date ASC
+      `,
+      sql`
+        SELECT *
+        FROM project_activities pa
+        WHERE pa.project_id = ${id}
+        ORDER BY pa.created_at DESC
+        LIMIT 20
+      `,
+      sql`
+        SELECT *
+        FROM project_documents
+        WHERE project_id = ${id}
+        ORDER BY created_at DESC
+      `,
+      overlaySales([project[0]]),
+    ]);
 
     const projectData = {
-      ...project[0],
+      ...withSales,
       milestones,
       activities,
       documents,

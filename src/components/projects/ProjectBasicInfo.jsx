@@ -133,7 +133,10 @@ export function ProjectBasicInfo({ project }) {
                 : "未設定"}
             </p>
             <p className="text-xs text-gray-400 mt-0.5">
-              売上の編集は支払ナビの販売案件で行ってください（保存時に自動反映）
+              {project.revenue_source === "import"
+                ? "過去の取り込み値です。"
+                : "支払ナビの販売案件の金額をそのまま表示しています。"}
+              売上の編集は支払ナビで行ってください。
             </p>
           </div>
 

@@ -146,3 +146,58 @@ export async function getCurrentFySales() {
     fyStart: fyStart.toISOString(),
   };
 }
+
+// ============================================================
+// 案件ごとの売上（支払ナビ「販売案件売上」シートが正）
+//   - AN-KANは売上の写しを持たず、表示のたびにここを引く（写しがずれないように）
+//   - 戻り値：{ "AD-1739": { amount, deliveryDate } , ... }（番号は 0埋めなし・大文字にそろえる）
+//   - 5分だけ覚えておく（全員の画面から何度も呼ばれるため）
+// ============================================================
+export function normalizeProjectNumber(raw) {
+  const m = String(raw || "").trim().toUpperCase().replace(/\s/g, "").match(/^([A-Z]+)-?0*(\d+)$/);
+  return m ? `${m[1]}-${parseInt(m[2], 10)}` : "";
+}
+
+let salesMapCache = { at: 0, value: null };
+const SALES_MAP_TTL = 5 * 60 * 1000;
+
+export async function getSalesMap() {
+  if (salesMapCache.value && Date.now() - salesMapCache.at < SALES_MAP_TTL) return salesMapCache.value;
+  const serviceAccountKey = process.env.GOOGLE_SERVICE_ACCOUNT_KEY;
+  if (!serviceAccountKey) throw new Error("サービスアカウントが設定されていません");
+  const accessToken = await getAccessToken(JSON.parse(serviceAccountKey));
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${DATA_SPREADSHEET_ID}/values/${encodeURIComponent(SALES_SHEET_RANGE)}`;
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
+  if (!res.ok) throw new Error(`販売案件売上の読み取りに失敗: ${res.status}`);
+  const rows = (await res.json()).values || [];
+  const map = {};
+  rows.forEach((r) => {
+    const key = normalizeProjectNumber(r[0]);
+    if (!key) return;
+    const amount = parseFloat(String(r[1] || "").replace(/,/g, "")) || 0;
+    const dateStr = r[4] || r[2] || ""; // 納品日（E）優先 → 更新日（C）。ダッシュボードと同じ
+    map[key] = { amount, deliveryDate: dateStr };
+  });
+  salesMapCache = { at: Date.now(), value: map };
+  return map;
+}
+
+// 案件の一覧に、シートの売上を重ねる（シートに無い案件は、過去期の取り込み値のまま）
+//   revenue        … 表示に使う売上
+//   revenue_source … "sheet"（支払ナビ）/ "import"（過去の取り込み値）/ null
+//   sales_date     … 売上の日付（納品日）。期の判定に使う
+export async function overlaySales(projects) {
+  let map = null;
+  try {
+    map = await getSalesMap();
+  } catch (e) {
+    console.error("売上シートを読めませんでした（取り込み値のまま表示）:", e.message);
+  }
+  return projects.map((p) => {
+    const key = normalizeProjectNumber(`${p.prefix || "AD"}-${p.ad_number}`);
+    const s = map && map[key];
+    if (s) return { ...p, revenue: s.amount, revenue_source: "sheet", sales_date: s.deliveryDate || null };
+    const has = Number(p.revenue) > 0;
+    return { ...p, revenue_source: has ? "import" : null, sales_date: null };
+  });
+}
