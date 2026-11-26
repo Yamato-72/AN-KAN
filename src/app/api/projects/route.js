@@ -1,4 +1,5 @@
 import { query } from "@/lib/db";
+import { gzipJson } from "@/app/api/utils/gzipJson";
 import { createGoogleDriveFolder } from "@/app/api/utils/googleDrive";
 import { normalizePrefix, initialStatusFor, formatProjectNumber } from "@/lib/prefixes";
 import { issueServiceToInventory } from "@/app/api/utils/inventorySheet";
@@ -131,7 +132,7 @@ export async function GET(request) {
     console.log("Unique projects count:", uniqueProjects.length);
     console.log("=== Projects API Debug End ===");
 
-    return Response.json(uniqueProjects);
+    return gzipJson(request, uniqueProjects);
   } catch (error) {
     console.error("Error fetching projects:", error);
     return Response.json(

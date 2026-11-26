@@ -40,8 +40,7 @@ export async function GET(request) {
     console.log("Project query:", projectStatsQuery);
     console.log("Project query params:", queryParams);
 
-    const projectStats = await sql(projectStatsQuery, queryParams);
-    console.log("Project stats result:", projectStats);
+    const projectStatsP = sql(projectStatsQuery, queryParams);
 
     // Get recent activity count - filter by project assignments and GFI
     let recentActivitiesQuery = `SELECT COUNT(*) as recent_activity_count
@@ -67,7 +66,7 @@ export async function GET(request) {
       recentActivitiesQuery += ` AND ${activityConditions.join(" AND ")}`;
     }
 
-    const recentActivities = await sql(recentActivitiesQuery, activityParams);
+    const recentActivitiesP = sql(recentActivitiesQuery, activityParams);
 
     // Get client count - filter by projects assigned to team member and GFI
     let clientStatsQuery = `SELECT COUNT(DISTINCT client_name) as total_clients
@@ -90,7 +89,7 @@ export async function GET(request) {
       clientStatsQuery += ` AND ${clientConditions.join(" AND")}`;
     }
 
-    const clientStats = await sql(clientStatsQuery, clientParams);
+    const clientStatsP = sql(clientStatsQuery, clientParams);
 
     // Get monthly project completion trend (last 6 months)
     let completionTrendQuery = `SELECT 
@@ -115,11 +114,19 @@ export async function GET(request) {
       completionTrendQuery += ` AND ${trendConditions.join(" AND ")}`;
     }
 
-    const completionTrend = await sql(
+    const completionTrendP = sql(
       completionTrendQuery +
         ` GROUP BY DATE_TRUNC('month', created_at) ORDER BY month DESC`,
       trendParams,
     );
+
+    // 4つの集計は互いに関係ないので、順番待ちせず同時に問い合わせる（速さのため）
+    const [projectStats, recentActivities, clientStats, completionTrend] = await Promise.all([
+      projectStatsP,
+      recentActivitiesP,
+      clientStatsP,
+      completionTrendP,
+    ]);
 
     // Safe data conversion with fallbacks
     const projectData = projectStats[0] || {};

@@ -7,9 +7,16 @@ import { getCurrentFySales, currentFyStart } from "@/app/api/utils/salesSheet";
 
 const TARGET_SALES = 270000000; // 8期目標 2.7億（期が変わったらここを更新）
 
+// 全ページのヘッダーで毎回呼ばれるので、集計結果を5分だけ覚えておく（シートを毎回読まない）
+const CACHE_MS = 5 * 60 * 1000;
+let cache = { at: 0, value: null };
+
 export async function GET() {
   try {
-    const { total, count, periodNo, marginPct } = await getCurrentFySales();
+    if (!cache.value || Date.now() - cache.at > CACHE_MS) {
+      cache = { at: Date.now(), value: await getCurrentFySales() };
+    }
+    const { total, count, periodNo, marginPct } = cache.value;
 
     // 経過月数（期首からの月数、当月含む）
     const now = new Date();

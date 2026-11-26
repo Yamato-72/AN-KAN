@@ -1,7 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 
-export const useProjects = (assignedTeamMemberId = null) => {
+export const useProjects = (assignedTeamMemberId = null, options = {}) => {
   return useQuery({
+    enabled: options.enabled ?? true,
     queryKey: ["projects", assignedTeamMemberId ?? "all"],
     queryFn: async () => {
       const searchParams = new URLSearchParams();

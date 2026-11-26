@@ -51,16 +51,19 @@ export default function DashboardPage({ params }) {
     }
   }, [params.userId]);
 
+  // URLの担当者コード（例 /dashboard/B）が分かっていれば、スタッフ一覧を待たずにすぐ読み始める。
+  // 分からない間は読まない（以前は最初に全員分の案件を読んでから、自分の分を読み直していた）
+  const staffCode =
+    currentStaff?.code ||
+    (params.userId && !/^\d+$/.test(params.userId) ? params.userId : null);
   const {
     data: projects,
     isLoading,
     error,
     refetch: refetchProjects,
-  } = useProjects(currentStaff?.code);
+  } = useProjects(staffCode, { enabled: !!staffCode });
 
-  const { data: stats, refetch: refetchStats } = useDashboardStats(
-    currentStaff?.code,
-  );
+  const { data: stats, refetch: refetchStats } = useDashboardStats(staffCode);
 
  const filteredProjects = useMemo(() => {
   if (!projects || projects.length === 0) return [];
