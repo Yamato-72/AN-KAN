@@ -18,6 +18,7 @@ const PUBLIC_PATHS = [
   "/api/projects/drawing-check", // GAS→案件フォルダに入った図面をChatへ通知
   "/api/chat/events", // Google Chat「AN-KAN」アプリの受け口
   "/api/dashboard/external-summary", // YSダッシュボード→集計
+  "/api/health", // 動作確認（どの版が動いているか）
   "/favicon",
   "/_next/",
 ];
