@@ -11,7 +11,7 @@ import { createSign } from "crypto";
 //       3) 各案件スペースに AN-KAN アプリを追加しておく
 // ============================================================
 
-let tokenCache = { token: "", exp: 0 };
+const tokenCache = {}; // スコープごとに覚える
 let spaceCache = { list: null, exp: 0 };
 
 function b64url(str) {
@@ -19,8 +19,10 @@ function b64url(str) {
   return buf.toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
 }
 
-async function getChatToken() {
-  if (tokenCache.token && tokenCache.exp > Date.now() + 60_000) return tokenCache.token;
+// サービスアカウントのトークン（Chat用・Drive読み取り用など、スコープごとに1時間使い回す）
+export async function getServiceToken(scope) {
+  const c = tokenCache[scope];
+  if (c && c.exp > Date.now() + 60_000) return c.token;
   const key = process.env.GOOGLE_SERVICE_ACCOUNT_KEY;
   if (!key) throw new Error("サービスアカウントが設定されていません");
   const cred = JSON.parse(key);
@@ -29,7 +31,7 @@ async function getChatToken() {
   const payload = b64url(
     JSON.stringify({
       iss: cred.client_email,
-      scope: "https://www.googleapis.com/auth/chat.bot",
+      scope,
       aud: "https://oauth2.googleapis.com/token",
       iat: now,
       exp: now + 3600,
@@ -44,10 +46,14 @@ async function getChatToken() {
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({ grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer", assertion: jwt }),
   });
-  if (!res.ok) throw new Error(`Chatのトークン取得に失敗: ${res.status} ${(await res.text()).slice(0, 200)}`);
+  if (!res.ok) throw new Error(`トークン取得に失敗: ${res.status} ${(await res.text()).slice(0, 200)}`);
   const data = await res.json();
-  tokenCache = { token: data.access_token, exp: Date.now() + (data.expires_in || 3600) * 1000 };
-  return tokenCache.token;
+  tokenCache[scope] = { token: data.access_token, exp: Date.now() + (data.expires_in || 3600) * 1000 };
+  return data.access_token;
+}
+
+function getChatToken() {
+  return getServiceToken("https://www.googleapis.com/auth/chat.bot");
 }
 
 // AN-KANアプリが参加しているスペースの一覧（10分キャッシュ）

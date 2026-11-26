@@ -15,6 +15,7 @@ const PUBLIC_PATHS = [
   "/api/projects/close-by-payment", // 支払ナビ→クローズ連携
   "/api/projects/update-revenue", // 支払ナビ→売上同期
   "/api/projects/arrival-check", // 支払ナビ→入荷予定日の変更をChatへ通知
+  "/api/projects/drawing-check", // GAS→案件フォルダに入った図面をChatへ通知
   "/api/chat/events", // Google Chat「AN-KAN」アプリの受け口
   "/api/dashboard/external-summary", // YSダッシュボード→集計
   "/favicon",
