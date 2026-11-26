@@ -4,7 +4,6 @@ import {
   Users,
   FileText,
   BarChart3,
-  Settings,
   Wrench,
   Flag,
   Banknote,
@@ -83,12 +82,12 @@ export const Sidebar = () => {
   // ほかのナビ（YSナビのキーと同じ色・同じ順番：業務の流れ）
   const NAVI = "https://yamato-72.github.io";
   const naviItems = [
-    { title: "YSナビ（入口）", href: `${NAVI}/procurement-system/home.html`, color: "#161616", fg: "#ffd21f", icon: Home },
-    { title: "納期ナビ", href: `${NAVI}/ys-tools/deliverytime.html`, color: "#e0823f", fg: "#161616", icon: CalendarDays },
-    { title: "支払ナビ", href: `${NAVI}/procurement-system/index.html`, color: "#e9bd3c", fg: "#161616", icon: Banknote },
-    { title: "在庫ナビ", href: `${NAVI}/procurement-system/inventory.html`, color: "#c9995c", fg: "#161616", icon: Package },
-    { title: "品質ナビ", href: `${NAVI}/procurement-system/quality.html`, color: "#4f9c95", fg: "#ffffff", icon: CheckSquare },
-    { title: "製品ナビ", href: `${NAVI}/procurement-system/genba.html`, color: "#4f72a8", fg: "#ffffff", icon: BookOpen },
+    { title: "YSナビ（入口）", href: `${NAVI}/procurement-system/home.html`, color: "#161616", edge: "#000000", fg: "#ffd21f", icon: Home },
+    { title: "納期ナビ", href: `${NAVI}/ys-tools/deliverytime.html`, color: "#e0823f", edge: "#a95a22", fg: "#161616", icon: CalendarDays },
+    { title: "支払ナビ", href: `${NAVI}/procurement-system/index.html`, color: "#e9bd3c", edge: "#b08a1c", fg: "#161616", icon: FileText },
+    { title: "在庫ナビ", href: `${NAVI}/procurement-system/inventory.html`, color: "#c9995c", edge: "#96703d", fg: "#161616", icon: Package },
+    { title: "品質ナビ", href: `${NAVI}/procurement-system/quality.html`, color: "#4f9c95", edge: "#336f6a", fg: "#ffffff", icon: CheckSquare },
+    { title: "製品ナビ", href: `${NAVI}/procurement-system/genba.html`, color: "#4f72a8", edge: "#334f7c", fg: "#ffffff", icon: BookOpen },
   ];
 
   const handleNavigation = (href) => {
@@ -119,23 +118,20 @@ export const Sidebar = () => {
 
       {/* ほかのナビ：小さな色つきのキー */}
       <div className="mt-2 pt-5 border-t border-gray-200 flex flex-col items-center gap-2.5">
-        {naviItems.map(({ title, href, color, fg, icon: Icon }) => (
+        {naviItems.map(({ title, href, color, edge, fg, icon: Icon }) => (
           <a
             key={title}
             href={href}
             title={title}
             aria-label={title}
             className="grid place-items-center h-8 w-8 rounded-lg transition-transform hover:-translate-y-0.5 active:translate-y-[2px]"
-            style={{ background: color, color: fg, boxShadow: "inset 0 1px 0 rgba(255,255,255,.35), 0 3px 0 rgba(0,0,0,.25)" }}
+            style={{ background: color, color: fg, boxShadow: `inset 0 1px 0 rgba(255,255,255,.35), inset 0 -2px 0 rgba(0,0,0,.12), 0 3px 0 ${edge}, 0 8px 12px -6px rgba(0,0,0,.35)` }}
           >
             <Icon className="h-4 w-4" />
           </a>
         ))}
       </div>
 
-      <div className="mt-auto">
-        <Settings className="h-5 w-5 text-gray-400 hover:text-gray-600 cursor-pointer" />
-      </div>
     </aside>
   );
 };

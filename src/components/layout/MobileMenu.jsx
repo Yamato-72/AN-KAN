@@ -7,6 +7,7 @@ import {
   Home,
   CalendarDays,
   Banknote,
+  FileText,
   Package,
   CheckSquare,
   BookOpen,
@@ -15,12 +16,12 @@ import {
 // ほかのナビ（YSナビのキーと同じ色・同じ順番：業務の流れ）
 const NAVI = "https://yamato-72.github.io";
 const NAVI_ITEMS = [
-  { title: "YSナビ", href: `${NAVI}/procurement-system/home.html`, color: "#161616", fg: "#ffd21f", icon: Home },
-  { title: "納期", href: `${NAVI}/ys-tools/deliverytime.html`, color: "#e0823f", fg: "#161616", icon: CalendarDays },
-  { title: "支払", href: `${NAVI}/procurement-system/index.html`, color: "#e9bd3c", fg: "#161616", icon: Banknote },
-  { title: "在庫", href: `${NAVI}/procurement-system/inventory.html`, color: "#c9995c", fg: "#161616", icon: Package },
-  { title: "品質", href: `${NAVI}/procurement-system/quality.html`, color: "#4f9c95", fg: "#ffffff", icon: CheckSquare },
-  { title: "製品", href: `${NAVI}/procurement-system/genba.html`, color: "#4f72a8", fg: "#ffffff", icon: BookOpen },
+  { title: "YSナビ", href: `${NAVI}/procurement-system/home.html`, color: "#161616", edge: "#000000", fg: "#ffd21f", icon: Home },
+  { title: "納期", href: `${NAVI}/ys-tools/deliverytime.html`, color: "#e0823f", edge: "#a95a22", fg: "#161616", icon: CalendarDays },
+  { title: "支払", href: `${NAVI}/procurement-system/index.html`, color: "#e9bd3c", edge: "#b08a1c", fg: "#161616", icon: FileText },
+  { title: "在庫", href: `${NAVI}/procurement-system/inventory.html`, color: "#c9995c", edge: "#96703d", fg: "#161616", icon: Package },
+  { title: "品質", href: `${NAVI}/procurement-system/quality.html`, color: "#4f9c95", edge: "#336f6a", fg: "#ffffff", icon: CheckSquare },
+  { title: "製品", href: `${NAVI}/procurement-system/genba.html`, color: "#4f72a8", edge: "#334f7c", fg: "#ffffff", icon: BookOpen },
 ];
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 
@@ -96,14 +97,14 @@ export const MobileMenu = ({ show, onClose }) => {
         <div className="px-4 pb-4">
           <div className="text-[11px] font-bold tracking-widest text-gray-400 mb-2">ほかのナビ</div>
           <div className="grid grid-cols-3 gap-2.5">
-            {NAVI_ITEMS.map(({ title, href, color, fg, icon: Icon }) => (
+            {NAVI_ITEMS.map(({ title, href, color, edge, fg, icon: Icon }) => (
               <a
                 key={title}
                 href={href}
                 target="_blank"
                 rel="noopener"
                 className="flex flex-col justify-between h-16 rounded-xl p-2 text-[13px] font-bold active:translate-y-[2px] transition-transform"
-                style={{ background: color, color: fg, boxShadow: "inset 0 1px 0 rgba(255,255,255,.35), 0 3px 0 rgba(0,0,0,.25)" }}
+                style={{ background: color, color: fg, boxShadow: `inset 0 1px 0 rgba(255,255,255,.35), inset 0 -2px 0 rgba(0,0,0,.12), 0 4px 0 ${edge}, 0 8px 12px -6px rgba(0,0,0,.35)` }}
               >
                 <Icon className="h-4 w-4" />
                 <span>{title}</span>
