@@ -20,8 +20,10 @@ function b64url(str) {
 }
 
 // サービスアカウントのトークン（Chat用・Drive読み取り用など、スコープごとに1時間使い回す）
-export async function getServiceToken(scope) {
-  const c = tokenCache[scope];
+//   subject を渡すと、その人になりかわって取る（ドメイン全体の委任。管理者操作用）
+export async function getServiceToken(scope, subject) {
+  const cacheKey = subject ? `${scope}|${subject}` : scope;
+  const c = tokenCache[cacheKey];
   if (c && c.exp > Date.now() + 60_000) return c.token;
   const key = process.env.GOOGLE_SERVICE_ACCOUNT_KEY;
   if (!key) throw new Error("サービスアカウントが設定されていません");
@@ -31,6 +33,7 @@ export async function getServiceToken(scope) {
   const payload = b64url(
     JSON.stringify({
       iss: cred.client_email,
+      ...(subject ? { sub: subject } : {}),
       scope,
       aud: "https://oauth2.googleapis.com/token",
       iat: now,
@@ -48,7 +51,7 @@ export async function getServiceToken(scope) {
   });
   if (!res.ok) throw new Error(`トークン取得に失敗: ${res.status} ${(await res.text()).slice(0, 200)}`);
   const data = await res.json();
-  tokenCache[scope] = { token: data.access_token, exp: Date.now() + (data.expires_in || 3600) * 1000 };
+  tokenCache[cacheKey] = { token: data.access_token, exp: Date.now() + (data.expires_in || 3600) * 1000 };
   return data.access_token;
 }
 
@@ -201,4 +204,87 @@ export async function postCardToSpace(spaceName, text, cardsV2) {
   });
   if (!res.ok) throw new Error(`Chatへの投稿に失敗: ${res.status} ${(await res.text()).slice(0, 200)}`);
   return res.json();
+}
+
+
+// ============================================================
+// TS（修理）を AD に紐づけたら、AD のスペース名に TS 番号を足す
+//   例: 「AD-0362/秋田駅西口サイネージ」→「AD-0362/TS-0108/秋田駅西口サイネージ」
+//       2件目以降は並べて足す →「AD-0362/TS-0108/TS-0120/秋田駅西口サイネージ」
+//   - 手で作ったスペースも変えられるよう、管理者（和田）になりかわって変更する
+//     （ドメイン全体の委任：Admin コンソールでサービスアカウントに chat.admin.spaces を許可しておく）
+//   - なりかわる人は CHAT_ADMIN_SUBJECT で変えられる
+//   - 戻り値: { status: "renamed" | "already" | "no_space", from, to }
+// ============================================================
+const ADMIN_SCOPE = "https://www.googleapis.com/auth/chat.admin.spaces";
+const ADMIN_SUBJECT = process.env.CHAT_ADMIN_SUBJECT || "toshihiro.wada8010@yamato-signage.com";
+
+function numberRe(prefix, number) {
+  return new RegExp(`(^|[^A-Za-z])${prefix}[-\\s]?0*${parseInt(number, 10)}(?!\\d)`, "i");
+}
+
+// 管理者として、名前に番号が入ったスペースを探す（AN-KANアプリが入っていないスペースも対象）
+async function adminSearchSpaces(token, prefix, number) {
+  const n = parseInt(number, 10);
+  const variants = [...new Set([`${prefix}-${n}`, `${prefix}-${String(n).padStart(4, "0")}`, `${prefix}${n}`])];
+  const re = numberRe(prefix, number);
+  const found = new Map();
+  for (const v of variants) {
+    const url = new URL("https://chat.googleapis.com/v1/spaces:search");
+    url.searchParams.set("useAdminAccess", "true");
+    url.searchParams.set("pageSize", "100");
+    url.searchParams.set(
+      "query",
+      `customer = "customers/my_customer" AND spaceType = "SPACE" AND display_name:"${v}"`,
+    );
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+    if (!res.ok) throw new Error(`スペースの検索に失敗: ${res.status} ${(await res.text()).slice(0, 200)}`);
+    const data = await res.json();
+    (data.spaces || []).forEach((s) => {
+      if (re.test(s.displayName || "")) found.set(s.name, { name: s.name, displayName: s.displayName || "" });
+    });
+  }
+  return [...found.values()];
+}
+
+export function nameWithTicket(displayName, adPrefix, adNumber, tsLabel) {
+  // AD番号のすぐ後ろ（すでに TS が並んでいればその後ろ）に「/TS-xxxx」を差し込む
+  const re = new RegExp(
+    `(${adPrefix}[-\\s]?0*${parseInt(adNumber, 10)}(?!\\d)(?:\\s*/\\s*TS[-\\s]?\\d+)*)`,
+    "i",
+  );
+  return displayName.replace(re, `$1/${tsLabel}`);
+}
+
+export async function appendTicketToSpaceName({ adPrefix, adNumber, tsPrefix, tsNumber, tsLabel }) {
+  const token = await getServiceToken(ADMIN_SCOPE, ADMIN_SUBJECT);
+  const hits = await adminSearchSpaces(token, adPrefix, adNumber);
+  if (!hits.length) return { status: "no_space" };
+  const results = [];
+  for (const sp of hits) {
+    if (numberRe(tsPrefix, tsNumber).test(sp.displayName)) {
+      results.push({ status: "already", from: sp.displayName, to: sp.displayName });
+      continue;
+    }
+    const to = nameWithTicket(sp.displayName, adPrefix, adNumber, tsLabel);
+    const url = new URL(`https://chat.googleapis.com/v1/${sp.name}`);
+    url.searchParams.set("updateMask", "displayName");
+    url.searchParams.set("useAdminAccess", "true");
+    const res = await fetch(url, {
+      method: "PATCH",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json; charset=UTF-8" },
+      body: JSON.stringify({ displayName: to }),
+    });
+    if (!res.ok) throw new Error(`スペース名の変更に失敗: ${res.status} ${(await res.text()).slice(0, 200)}`);
+    results.push({ status: "renamed", from: sp.displayName, to });
+  }
+  clearSpaceCache();
+  return results.find((r) => r.status === "renamed") || results[0];
+}
+
+// 確認用：管理者として検索できるか、変えるとしたらどうなるか（変更はしない）
+export async function previewTicketRename({ adPrefix, adNumber, tsLabel }) {
+  const token = await getServiceToken(ADMIN_SCOPE, ADMIN_SUBJECT);
+  const hits = await adminSearchSpaces(token, adPrefix, adNumber);
+  return hits.map((h) => ({ space: h.name, from: h.displayName, to: tsLabel ? nameWithTicket(h.displayName, adPrefix, adNumber, tsLabel) : null }));
 }

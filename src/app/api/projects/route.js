@@ -1,3 +1,4 @@
+import { linkTicketToAdSpace } from "@/app/api/utils/ticketSpace";
 import { query } from "@/lib/db";
 import { gzipJson } from "@/app/api/utils/gzipJson";
 import { overlaySales } from "@/app/api/utils/salesSheet";
@@ -422,6 +423,11 @@ export async function POST(request) {
       } catch (issueError) {
         console.error("TS自動発券エラー:", issueError);
       }
+    }
+
+    // TSに関連ADが付いていれば、ADのチャットスペース名にTS番号を追記
+    if (normalizedPrefix === "TS" && project.related_project_id) {
+      await linkTicketToAdSpace(project.id, project.related_project_id);
     }
 
     return Response.json(project);

@@ -1,3 +1,4 @@
+import { linkTicketToAdSpace } from "@/app/api/utils/ticketSpace";
 import sql from "@/app/api/utils/sql";
 import { requireEditPermission } from "@/lib/authz";
 import { overlaySales } from "@/app/api/utils/salesSheet";
@@ -596,6 +597,15 @@ if (
         INSERT INTO project_activities (project_id, activity_type, description)
         VALUES (${id}, 'estimated_amount_update', ${`見積額が「${oldAmount}」から「${newAmount}」に変更されました`})
       `;
+    }
+
+    // TSに関連ADが新しく付いた（または付け替えた）ら、ADのチャットスペース名にTS番号を追記
+    if (
+      updatedProject?.related_project_id &&
+      String(updatedProject.related_project_id) !== String(oldProject.related_project_id || "") &&
+      String(updatedProject.prefix || "").toUpperCase() === "TS"
+    ) {
+      await linkTicketToAdSpace(updatedProject.id, updatedProject.related_project_id);
     }
 
     return Response.json(updatedProject);
