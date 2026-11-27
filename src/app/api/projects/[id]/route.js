@@ -1,3 +1,4 @@
+import { removePendingOrder } from "@/app/api/utils/salesSheet";
 import { linkTicketToAdSpace, syncTsInfoToSheet } from "@/app/api/utils/ticketSpace";
 import sql from "@/app/api/utils/sql";
 import { requireEditPermission } from "@/lib/authz";
@@ -646,6 +647,14 @@ export async function DELETE(request, { params }) {
 
     // Delete project (cascades to related tables)
     await sql`DELETE FROM projects WHERE id = ${id}`;
+
+    // 支払ナビの「これから発注」からも外す（まだ発注していなければ札が残らないように）
+    try {
+      const p = existingProject[0];
+      await removePendingOrder({ prefix: p.prefix || "AD", number: p.ad_number });
+    } catch (e) {
+      console.error("発注待ちからの削除に失敗:", e.message);
+    }
 
     return Response.json({ message: "Project deleted successfully" });
   } catch (error) {

@@ -313,3 +313,32 @@ export async function addPendingOrder({ prefix, number, name, reason }) {
   if (!ap.ok) throw new Error(`発注待ちシートへの書き込みに失敗: ${ap.status} ${(await ap.text()).slice(0, 150)}`);
   return { added: true };
 }
+
+// 案件を消したとき・番号を変えたときに、「発注待ち」から外す（まだ発注していない番号の札を残さない）
+export async function removePendingOrder({ prefix, number }) {
+  const serviceAccountKey = process.env.GOOGLE_SERVICE_ACCOUNT_KEY;
+  if (!serviceAccountKey) return { removed: false };
+  const token = await getAccessToken(JSON.parse(serviceAccountKey), true);
+  const ss = `https://sheets.googleapis.com/v4/spreadsheets/${DATA_SPREADSHEET_ID}`;
+  const meta = await fetch(`${ss}?fields=sheets.properties`, { headers: { Authorization: `Bearer ${token}` } });
+  if (!meta.ok) return { removed: false };
+  const sheet = ((await meta.json()).sheets || []).find((x) => x.properties.title === "発注待ち");
+  if (!sheet) return { removed: false };
+  const res = await fetch(`${ss}/values/${encodeURIComponent("発注待ち!A2:A")}`, { headers: { Authorization: `Bearer ${token}` } });
+  if (!res.ok) return { removed: false };
+  const rows = (await res.json()).values || [];
+  const want = normalizeProjectNumber(`${prefix}-${number}`);
+  // 下の行から消す（行番号がずれないように）
+  const idxs = rows.map((r, i) => (normalizeProjectNumber(r[0]) === want ? i + 1 : -1)).filter((i) => i > 0).reverse();
+  if (!idxs.length) return { removed: false };
+  const del = await fetch(`${ss}:batchUpdate`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      requests: idxs.map((i) => ({
+        deleteDimension: { range: { sheetId: sheet.properties.sheetId, dimension: "ROWS", startIndex: i, endIndex: i + 1 } },
+      })),
+    }),
+  });
+  return { removed: del.ok };
+}
