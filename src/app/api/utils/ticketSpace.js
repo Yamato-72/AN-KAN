@@ -1,5 +1,5 @@
 import sql from "@/app/api/utils/sql";
-import { appendTicketToSpaceName } from "@/app/api/utils/googleChat";
+import { appendTicketToSpaceName, findProjectSpace, postToSpace } from "@/app/api/utils/googleChat";
 import { formatProjectNumber, normalizePrefix } from "@/lib/prefixes";
 
 // ============================================================
@@ -9,14 +9,18 @@ import { formatProjectNumber, normalizePrefix } from "@/lib/prefixes";
 export async function linkTicketToAdSpace(tsProjectId, relatedProjectId) {
   try {
     if (!relatedProjectId) return null;
-    // 管理者の委任（特権管理者の設定）が済むまでは止めておく。済んだら CHAT_TS_RENAME=true で動く
-    if (process.env.CHAT_TS_RENAME !== "true") return null;
-    const [ts] = await sql`SELECT id, prefix, ad_number FROM projects WHERE id = ${tsProjectId}`;
+    const [ts] = await sql`SELECT id, prefix, ad_number, project_name FROM projects WHERE id = ${tsProjectId}`;
     const [ad] = await sql`SELECT id, prefix, ad_number FROM projects WHERE id = ${relatedProjectId}`;
     if (!ts || !ad || normalizePrefix(ts.prefix) !== "TS" || !ad.ad_number) return null;
 
     const tsLabel = formatProjectNumber(ts.prefix, ts.ad_number);
     const adLabel = formatProjectNumber(ad.prefix, ad.ad_number);
+
+    // いまは名前を変えず、ADのスペースへ投稿する（AN-KANアプリが入っているスペースだけ）
+    //   スペース名の追記は特権管理者の委任が要るので、CHAT_TS_RENAME=true のときだけ
+    if (process.env.CHAT_TS_RENAME !== "true") {
+      return await postTicketToAdSpace({ ts, ad, tsLabel, adLabel });
+    }
     const r = await appendTicketToSpaceName({
       adPrefix: normalizePrefix(ad.prefix),
       adNumber: ad.ad_number,
@@ -36,8 +40,22 @@ export async function linkTicketToAdSpace(tsProjectId, relatedProjectId) {
   } catch (e) {
     console.error("TSのスペース名追記に失敗:", e.message);
     try {
-      await sql`INSERT INTO project_activities (project_id, activity_type, description) VALUES (${tsProjectId}, 'chat_space_rename_failed', ${`関連ADのスペース名の追記に失敗（${String(e.message).slice(0, 150)}）`})`;
+      await sql`INSERT INTO project_activities (project_id, activity_type, description) VALUES (${tsProjectId}, 'chat_space_rename_failed', ${`関連ADのチャット通知に失敗（${String(e.message).slice(0, 150)}）`})`;
     } catch {}
     return { status: "error", error: e.message };
   }
+}
+
+async function postTicketToAdSpace({ ts, ad, tsLabel, adLabel }) {
+  const { space } = await findProjectSpace(normalizePrefix(ad.prefix), ad.ad_number);
+  if (!space) {
+    await sql`INSERT INTO project_activities (project_id, activity_type, description) VALUES (${ts.id}, 'chat_ticket_post_skipped', ${`${adLabel} のチャットスペース（AN-KANが入っているもの）が見つからないため、通知していません`})`;
+    return { status: "no_space" };
+  }
+  const base = process.env.ANKAN_PROJECT_URL_BASE;
+  const link = base ? `\n${base.replace(/\/$/, "")}/${ts.id}` : "";
+  await postToSpace(space.name, `🔧 ${tsLabel} を登録しました（${ts.project_name || "修理"}）${link}`);
+  await sql`INSERT INTO project_activities (project_id, activity_type, description) VALUES (${ad.id}, 'ticket_linked', ${`修理 ${tsLabel}（${ts.project_name || ""}）が紐づきました。チャットに通知`})`;
+  await sql`INSERT INTO project_activities (project_id, activity_type, description) VALUES (${ts.id}, 'chat_ticket_posted', ${`${adLabel} のチャットスペースに通知しました（${space.displayName}）`})`;
+  return { status: "posted", space: space.displayName };
 }
