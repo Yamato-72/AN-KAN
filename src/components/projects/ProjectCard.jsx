@@ -162,7 +162,7 @@ export const ProjectCard = ({
           <div className="flex items-start justify-between mb-4">
             <div className="flex-1">
               <h3 className="text-sm lg:text-lg font-semibold text-gray-700 mb-1.5 lg:mb-2 leading-snug hover:text-blue-600 transition-colors">
-                {project.client_name}
+                {project.project_name}
               </h3>
             </div>
           </div>
@@ -176,7 +176,7 @@ export const ProjectCard = ({
             )}
             <div className="flex items-center gap-2 text-sm text-gray-600">
               <Building className="h-4 w-4 text-gray-400 flex-shrink-0" />
-              <span className="truncate">{project.project_name}</span>
+              <span className="truncate">{project.client_name || "顧客未設定"}</span>
             </div>
             {/* 担当者情報を追加 */}
             <div className="flex items-center gap-2 text-sm text-gray-600">
