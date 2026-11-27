@@ -14,10 +14,20 @@ const getTwoMonthsLater = () => {
   return twoMonthsLater.toISOString().split("T")[0]; // YYYY-MM-DD形式
 };
 
+// 修理（TS）の区分。値は支払ナビのシートと同じ言葉
+const TS_KIND_OPTIONS = [
+  { value: "スポット", label: "スポット修理", hint: "お客さまに請求する修理。TS 単体で売上と原価を見ます" },
+  { value: "製品保証", label: "製品保証（1年）", hint: "無償・YS 負担。元の AD の保証の欄に出ます" },
+  { value: "延長保証", label: "延長保証", hint: "購入時にもらった保証料から。元の AD の保証料の残りから引きます" },
+  { value: "保証外の無償対応", label: "保証外の無償対応", hint: "保証は切れているが無償で対応。YS 負担として別に数えます" },
+  { value: "サービス保証", label: "サービス保証（過去の契約）", hint: "過去にサービス保証を付けた案件の対応" },
+];
+
 const INITIAL_FORM_DATA = {
   prefix: DEFAULT_PREFIX,
   ad_number: "",
   related_project_id: null,
+  ts_kind: "", // 修理の区分（支払ナビのシートに書く）
   project_name: "",
   client_name: "",
   inquiry_date: "", // 問い合わせ日を追加
@@ -245,6 +255,7 @@ export const NewProjectModal = ({
           prefix: editProject.prefix || DEFAULT_PREFIX,
           ad_number: editProject.ad_number || "",
           related_project_id: editProject.related_project_id || null,
+          ts_kind: editProject.ts_kind || "",
           project_name: editProject.project_name || "",
           client_name: editProject.client_name || "",
           inquiry_date: editProject.inquiry_date
@@ -584,6 +595,35 @@ export const NewProjectModal = ({
               )}
               <p className="text-xs text-gray-500 mt-1">
                 修理・保守の場合、元の販売案件（AD）を紐づけます
+              </p>
+            </div>
+          )}
+
+          {formData.prefix === "TS" && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                修理の区分（だれがお金を出すか）
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {TS_KIND_OPTIONS.map((o) => (
+                  <button
+                    key={o.value}
+                    type="button"
+                    onClick={() => setFormData((prev) => ({ ...prev, ts_kind: prev.ts_kind === o.value ? "" : o.value }))}
+                    className={`px-3 py-1.5 rounded-lg border text-sm transition-colors ${
+                      formData.ts_kind === o.value
+                        ? "bg-gray-900 text-white border-gray-900"
+                        : "bg-white text-gray-700 border-gray-300 hover:border-gray-500"
+                    }`}
+                    title={o.hint}
+                  >
+                    {o.label}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                {(TS_KIND_OPTIONS.find((o) => o.value === formData.ts_kind) || {}).hint ||
+                  "スポット以外は、売上ゼロでも支払ナビで赤字扱いにしません"}
               </p>
             </div>
           )}

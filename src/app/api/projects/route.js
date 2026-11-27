@@ -1,4 +1,4 @@
-import { linkTicketToAdSpace } from "@/app/api/utils/ticketSpace";
+import { linkTicketToAdSpace, syncTsInfoToSheet } from "@/app/api/utils/ticketSpace";
 import { query } from "@/lib/db";
 import { gzipJson } from "@/app/api/utils/gzipJson";
 import { overlaySales } from "@/app/api/utils/salesSheet";
@@ -157,6 +157,7 @@ export async function POST(request) {
       remarks,
       product_number,
       related_project_id,
+      ts_kind,
       installation_date,
       installation_contractor,
       installation_contractor2,
@@ -428,6 +429,10 @@ export async function POST(request) {
     // TSに関連ADが付いていれば、ADのチャットスペース名にTS番号を追記
     if (normalizedPrefix === "TS" && project.related_project_id) {
       await linkTicketToAdSpace(project.id, project.related_project_id);
+    }
+    // TSの区分・関連ADを支払ナビのシートへ（売上ゼロでも赤字扱いにしないため）
+    if (normalizedPrefix === "TS" && (ts_kind || project.related_project_id)) {
+      await syncTsInfoToSheet(project.id, ts_kind);
     }
 
     return Response.json(project);

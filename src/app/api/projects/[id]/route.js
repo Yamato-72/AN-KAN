@@ -1,4 +1,4 @@
-import { linkTicketToAdSpace } from "@/app/api/utils/ticketSpace";
+import { linkTicketToAdSpace, syncTsInfoToSheet } from "@/app/api/utils/ticketSpace";
 import sql from "@/app/api/utils/sql";
 import { requireEditPermission } from "@/lib/authz";
 import { overlaySales } from "@/app/api/utils/salesSheet";
@@ -96,6 +96,7 @@ export async function PUT(request, { params }) {
       remarks,
       product_number, // 製品番号を追加
       related_project_id, // 関連元案件（修理の親など）
+      ts_kind, // 修理の区分（支払ナビのシートに書く。DBには持たない）
       address,
       phone_number,
       estimated_amount,
@@ -606,6 +607,14 @@ if (
       String(updatedProject.prefix || "").toUpperCase() === "TS"
     ) {
       await linkTicketToAdSpace(updatedProject.id, updatedProject.related_project_id);
+    }
+
+    // 修理の区分・関連ADが変わったら支払ナビのシートへ
+    if (
+      String(updatedProject?.prefix || "").toUpperCase() === "TS" &&
+      (ts_kind !== undefined || String(updatedProject.related_project_id || "") !== String(oldProject.related_project_id || ""))
+    ) {
+      await syncTsInfoToSheet(updatedProject.id, ts_kind);
     }
 
     return Response.json(updatedProject);

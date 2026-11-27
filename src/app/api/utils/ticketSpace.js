@@ -1,6 +1,7 @@
 import sql from "@/app/api/utils/sql";
 import { appendTicketToSpaceName, findProjectSpace, postToSpace } from "@/app/api/utils/googleChat";
 import { formatProjectNumber, normalizePrefix } from "@/lib/prefixes";
+import { writeTsInfo } from "@/app/api/utils/salesSheet";
 
 // ============================================================
 // TS 案件に関連AD が付いたら、AD のスペース名に TS 番号を足し、両方の案件にログを残す
@@ -58,4 +59,23 @@ async function postTicketToAdSpace({ ts, ad, tsLabel, adLabel }) {
   await sql`INSERT INTO project_activities (project_id, activity_type, description) VALUES (${ad.id}, 'ticket_linked', ${`修理 ${tsLabel}（${ts.project_name || ""}）が紐づきました。チャットに通知`})`;
   await sql`INSERT INTO project_activities (project_id, activity_type, description) VALUES (${ts.id}, 'chat_ticket_posted', ${`${adLabel} のチャットスペースに通知しました（${space.displayName}）`})`;
   return { status: "posted", space: space.displayName };
+}
+
+// TS の区分・関連ADを支払ナビのシート（販売案件売上 I・J）へ。失敗しても登録は止めない
+export async function syncTsInfoToSheet(tsProjectId, kind) {
+  try {
+    const [ts] = await sql`SELECT id, prefix, ad_number, related_project_id FROM projects WHERE id = ${tsProjectId}`;
+    if (!ts || normalizePrefix(ts.prefix) !== "TS") return;
+    let adLabel = "";
+    if (ts.related_project_id) {
+      const [ad] = await sql`SELECT prefix, ad_number FROM projects WHERE id = ${ts.related_project_id}`;
+      if (ad) adLabel = formatProjectNumber(ad.prefix, ad.ad_number);
+    }
+    await writeTsInfo({ tsLabel: formatProjectNumber(ts.prefix, ts.ad_number), kind, relatedAd: adLabel });
+  } catch (e) {
+    console.error("TSの区分をシートに書けませんでした:", e.message);
+    try {
+      await sql`INSERT INTO project_activities (project_id, activity_type, description) VALUES (${tsProjectId}, 'ts_kind_sync_failed', ${`修理の区分を支払ナビに書き込めませんでした（${String(e.message).slice(0, 120)}）`})`;
+    } catch {}
+  }
 }
