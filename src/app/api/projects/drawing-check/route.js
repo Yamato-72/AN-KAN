@@ -119,7 +119,7 @@ async function run(request) {
     // 0c) 支払ナビで付いた製品番号（YS番号）をAN-KANへ返す
     let productNumbers = [];
     try {
-      productNumbers = await syncProductNumbers({ dry });
+      productNumbers = await syncProductNumbers({ dry: true }); // いったん確認のみ（製品番号欄は型式に使われているため、書き込みは止めている）
     } catch (e) {
       console.error("製品番号の取り込みに失敗:", e.message);
     }
