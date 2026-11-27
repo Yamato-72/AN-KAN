@@ -268,3 +268,48 @@ export async function writeTsInfo({ tsLabel, kind, relatedAd }) {
   salesMapCache = { at: 0, value: null };
   return true;
 }
+
+// ============================================================
+// 支払ナビへ「これから発注する番号」を渡す（2026-11-27）
+//   - シート「発注待ち」：A 案件番号 / B 接頭辞 / C 番号 / D 名前 / E 追加日 / F きっかけ
+//   - 支払ナビは、まだ発注（案件シート）が無い番号だけを「これから発注」として上に出す
+//   - 支払ナビは案件シートを丸ごと書き直すので、そこには直接書かない
+// ============================================================
+export async function addPendingOrder({ prefix, number, name, reason }) {
+  const serviceAccountKey = process.env.GOOGLE_SERVICE_ACCOUNT_KEY;
+  if (!serviceAccountKey) throw new Error("サービスアカウントが設定されていません");
+  const token = await getAccessToken(JSON.parse(serviceAccountKey), true);
+  const ss = `https://sheets.googleapis.com/v4/spreadsheets/${DATA_SPREADSHEET_ID}`;
+  const SHEET = "発注待ち";
+  const label = `${prefix}-${number}`;
+
+  let res = await fetch(`${ss}/values/${encodeURIComponent(`${SHEET}!A2:A`)}`, { headers: { Authorization: `Bearer ${token}` } });
+  if (res.status === 400) {
+    // シートが無ければ作る（見出しつき）
+    const mk = await fetch(`${ss}:batchUpdate`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ requests: [{ addSheet: { properties: { title: SHEET } } }] }),
+    });
+    if (!mk.ok) throw new Error(`発注待ちシートを作れません: ${mk.status}`);
+    await fetch(`${ss}/values/${encodeURIComponent(`${SHEET}!A1:F1`)}?valueInputOption=RAW`, {
+      method: "PUT",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ values: [["案件番号", "接頭辞", "番号", "名前", "追加日", "きっかけ"]] }),
+    });
+    res = await fetch(`${ss}/values/${encodeURIComponent(`${SHEET}!A2:A`)}`, { headers: { Authorization: `Bearer ${token}` } });
+  }
+  if (!res.ok) throw new Error(`発注待ちシートの読み取りに失敗: ${res.status}`);
+  const rows = (await res.json()).values || [];
+  const want = normalizeProjectNumber(label);
+  if (rows.some((r) => normalizeProjectNumber(r[0]) === want)) return { added: false };
+
+  const today = new Date(Date.now() + 9 * 3600e3).toISOString().split("T")[0];
+  const ap = await fetch(`${ss}/values/${encodeURIComponent(`${SHEET}!A:F`)}:append?valueInputOption=RAW`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ values: [[label, prefix, String(number), name || "", today, reason || ""]] }),
+  });
+  if (!ap.ok) throw new Error(`発注待ちシートへの書き込みに失敗: ${ap.status} ${(await ap.text()).slice(0, 150)}`);
+  return { added: true };
+}

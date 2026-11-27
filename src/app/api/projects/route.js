@@ -1,3 +1,4 @@
+import { addPendingOrder } from "@/app/api/utils/salesSheet";
 import { linkTicketToAdSpace, syncTsInfoToSheet } from "@/app/api/utils/ticketSpace";
 import { query } from "@/lib/db";
 import { gzipJson } from "@/app/api/utils/gzipJson";
@@ -433,6 +434,19 @@ export async function POST(request) {
     // TSの区分・関連ADを支払ナビのシートへ（売上ゼロでも赤字扱いにしないため）
     if (normalizedPrefix === "TS" && (ts_kind || project.related_project_id)) {
       await syncTsInfoToSheet(project.id, ts_kind);
+    }
+
+    // SP（在庫の発注）は作ったらすぐ、支払ナビの「これから発注」に番号を渡す
+    if (normalizedPrefix === "SP") {
+      try {
+        const r = await addPendingOrder({ prefix: "SP", number: project.ad_number, name: project_name, reason: "SPを作成" });
+        if (r.added) {
+          await query(`INSERT INTO project_activities (project_id, activity_type, description) VALUES ($1, $2, $3)`,
+            [project.id, "pending_order", "支払ナビの「これから発注」に番号を渡しました"]);
+        }
+      } catch (e) {
+        console.error("発注待ちへの書き込みに失敗:", e.message);
+      }
     }
 
     return Response.json(project);

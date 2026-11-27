@@ -1,3 +1,4 @@
+import { addPendingOrder } from "@/app/api/utils/salesSheet";
 import sql from "@/app/api/utils/sql";
 import { requireEditPermission } from "@/lib/authz";
 import { ensureProjectSpace } from "@/app/api/utils/googleChat";
@@ -309,6 +310,21 @@ export async function PUT(request, { params }) {
             VALUES (${id}, 'chat_space_failed', ${"Chatスペースを自動で作れませんでした：" + String(e.message).slice(0, 200)})
           `;
         } catch {}
+      }
+    }
+
+    // === 支払ナビの「これから発注」に番号を渡す（ADが受注済みになったとき）===
+    if (newStatus === "受注済み" && (updatedProject[0].prefix || "AD") === "AD") {
+      try {
+        const r = await addPendingOrder({ prefix: "AD", number: updatedProject[0].ad_number, name: updatedProject[0].project_name, reason: "受注済み" });
+        if (r.added) {
+          await sql`
+            INSERT INTO project_activities (project_id, activity_type, description)
+            VALUES (${id}, 'pending_order', '支払ナビの「これから発注」に番号を渡しました')
+          `;
+        }
+      } catch (e) {
+        console.error("発注待ちへの書き込みに失敗:", e.message);
       }
     }
 
