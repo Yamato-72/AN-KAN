@@ -29,9 +29,11 @@ async function loadRows() {
     location: r[15] || "",
     archived,
   });
+  // サービスチケット（種別「サービス」・SVC-…）は物ではないので出さない
+  const isTicket = (r) => r[2] === "サービス" || /^SVC-/i.test(r[1] || "");
   const rows = [
-    ...live.filter((r) => r[0]).map((r) => toItem(r, false)),
-    ...archive.filter((r) => r[0]).map((r) => toItem(r, true)),
+    ...live.filter((r) => r[0] && !isTicket(r)).map((r) => toItem(r, false)),
+    ...archive.filter((r) => r[0] && !isTicket(r)).map((r) => toItem(r, true)),
   ];
   cache = { at: Date.now(), rows };
   return rows;
