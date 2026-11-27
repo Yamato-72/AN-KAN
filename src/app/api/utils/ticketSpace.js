@@ -9,6 +9,8 @@ import { formatProjectNumber, normalizePrefix } from "@/lib/prefixes";
 export async function linkTicketToAdSpace(tsProjectId, relatedProjectId) {
   try {
     if (!relatedProjectId) return null;
+    // 管理者の委任（特権管理者の設定）が済むまでは止めておく。済んだら CHAT_TS_RENAME=true で動く
+    if (process.env.CHAT_TS_RENAME !== "true") return null;
     const [ts] = await sql`SELECT id, prefix, ad_number FROM projects WHERE id = ${tsProjectId}`;
     const [ad] = await sql`SELECT id, prefix, ad_number FROM projects WHERE id = ${relatedProjectId}`;
     if (!ts || !ad || normalizePrefix(ts.prefix) !== "TS" || !ad.ad_number) return null;
