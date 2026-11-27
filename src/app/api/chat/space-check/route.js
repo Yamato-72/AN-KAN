@@ -24,7 +24,7 @@ export async function GET(request) {
           VALUES (${rows[0].id}, 'chat_space_created', ${"Chatスペースを自動で作りました" + (r.failed?.length ? `（追加できなかったメンバー：${r.failed.join("、")}）` : "")})
         `;
       }
-      return Response.json({ ok: true, created: r.created, space: r.space?.displayName, failed: r.failed || [] });
+      return Response.json({ ok: true, created: r.created, space: r.space?.displayName, spaceName: r.space?.name, failed: r.failed || [] });
     }
     const { space, count } = await findProjectSpace(m[1], m[2]);
     return Response.json({ ok: true, found: !!space, count, space: space?.displayName || null });

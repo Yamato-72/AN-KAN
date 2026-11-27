@@ -1,3 +1,4 @@
+import sql from "@/app/api/utils/sql";
 import { getDelegateToken, getSecret } from "@/app/api/utils/chatDelegate";
 import { createSign } from "crypto";
 
@@ -83,7 +84,26 @@ async function listSpaces() {
 // 案件番号（例 AD-1666 / TS-0077 / TS-77）が名前に入っているスペースを探す
 //   - 番号の0埋めのあるなし、ハイフンのあるなしは同じとみなす
 //   - 「AD-1666」で「AD-16660」に当たらないよう、番号の後ろが数字でないことを確認
+// AN-KANが作ったスペースは、作った時点で控えておく（一覧に出てくるまで時間がかかることがあるため）
+async function ensureSpaceTable() {
+  await sql`CREATE TABLE IF NOT EXISTS project_spaces (prefix TEXT NOT NULL, number INTEGER NOT NULL, space_name TEXT NOT NULL, display_name TEXT, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), PRIMARY KEY (prefix, number))`;
+}
+export async function rememberProjectSpace(prefix, number, space) {
+  await ensureSpaceTable();
+  await sql`
+    INSERT INTO project_spaces (prefix, number, space_name, display_name) VALUES (${prefix}, ${parseInt(number, 10)}, ${space.name}, ${space.displayName || ""})
+    ON CONFLICT (prefix, number) DO UPDATE SET space_name = EXCLUDED.space_name, display_name = EXCLUDED.display_name
+  `;
+}
+
 export async function findProjectSpace(prefix, number) {
+  try {
+    await ensureSpaceTable();
+    const rows = await sql`SELECT space_name, display_name FROM project_spaces WHERE prefix = ${prefix} AND number = ${parseInt(number, 10)}`;
+    if (rows.length) return { space: { name: rows[0].space_name, displayName: rows[0].display_name }, count: 1 };
+  } catch (e) {
+    console.error("project_spaces の読み込みに失敗:", e.message);
+  }
   const re = new RegExp(`(^|[^A-Za-z])${prefix}[-\\s]?0*${parseInt(number, 10)}(?!\\d)`, "i");
   let hits = (await listSpaces()).filter((s) => re.test(s.displayName));
   // 見つからないときは、スペース名の変更や新規追加を反映するため一覧を取り直す
@@ -222,6 +242,7 @@ export async function ensureProjectSpace(project) {
     projectName: project.project_name,
     driveLink: project.drive_folder_link || (project.drive_folder_id ? `https://drive.google.com/drive/folders/${project.drive_folder_id}` : ""),
   });
+  try { await rememberProjectSpace(prefix, project.ad_number, { name: made.name, displayName }); } catch (e) { console.error(e); }
   const lines = [
     `「${displayName}」のスペースを、受注にあわせてAN-KANが作りました。`,
     "入荷予定日の変更・図面・PL/CIなどの知らせは、ここに届きます。",
