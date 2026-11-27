@@ -3,7 +3,6 @@ import {
   Building,
   Users,
   FileText,
-  BarChart3,
   Wrench,
   Flag,
   Banknote,
@@ -45,18 +44,6 @@ export const Sidebar = () => {
       href: createSecretUrl("/lost-hold"),                // ★ 失注・保留ページ
       isActive: pathname.startsWith(createSecretUrl("/lost-hold")),
       title: "失注・保留",
-    },
-    {
-      icon: BarChart3,
-      href: (() => {
-        const path = pathname || "";
-        const segments = path.split("/").filter(Boolean);
-        const secret = segments[0];      // 例: "abc123"（secretPath）
-        const id = segments[2];          // 例: "B"（userId）
-        return createSecretUrl(`/analysis/${id || ""}`);
-      })(),
-      isActive: pathname.includes("/analysis/"),
-      title: "分析",
     },
     {
       icon: TrendingUp,
