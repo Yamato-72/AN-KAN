@@ -21,7 +21,7 @@ a{display:inline-block;padding:9px 16px;border-radius:10px;background:#161616;co
 }
 
 // 外す・戻すを押せる人（和田・梶原のみ）。Cloud Run の WATCH_ADMINS（カンマ区切りのメール）で上書きできる
-const DEFAULT_ALLOWED = ["toshihiro.wada8010@yamato-signage.com"];
+const DEFAULT_ALLOWED = ["toshihiro.wada8010@yamato-signage.com", "management-team8010@yamato-signage.com"]; // 和田・梶原
 function allowedEmails() {
   const env = (process.env.WATCH_ADMINS || "").split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
   return env.length ? env : DEFAULT_ALLOWED;
