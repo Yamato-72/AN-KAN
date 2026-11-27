@@ -189,3 +189,16 @@ export async function findSpaceByName(displayName) {
   }
   return hit || null;
 }
+
+// カード形式で投稿する（見出し・区切り・リンクボタンつきで読みやすく）
+//   cardsV2 … Chat の Card v2 形式。text は通知やカードが出ない環境向けの短い要約
+export async function postCardToSpace(spaceName, text, cardsV2) {
+  const token = await getChatToken();
+  const res = await fetch(`https://chat.googleapis.com/v1/${spaceName}/messages`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json; charset=UTF-8" },
+    body: JSON.stringify({ text, cardsV2 }),
+  });
+  if (!res.ok) throw new Error(`Chatへの投稿に失敗: ${res.status} ${(await res.text()).slice(0, 200)}`);
+  return res.json();
+}

@@ -1,5 +1,5 @@
 import sql from "@/app/api/utils/sql";
-import { findSpaceByName, postToSpace } from "@/app/api/utils/googleChat";
+import { findSpaceByName, postCardToSpace } from "@/app/api/utils/googleChat";
 import { getSalesMap, normalizeProjectNumber, readDataRanges } from "@/app/api/utils/salesSheet";
 import { getSessionFromRequest } from "@/lib/authz";
 
@@ -15,6 +15,44 @@ import { getSessionFromRequest } from "@/lib/authz";
 // ============================================================
 const SPACE_NAME = "システム見張り";
 const MAX_LIST = 10;
+
+function projectLink(id) {
+  const base = process.env.ANKAN_PROJECT_URL_BASE;
+  return base && id ? `${base.replace(/\/$/, "")}/${id}` : "";
+}
+
+// 問題1つ = { title, count, items: [{ head, sub, url }], more }
+function issue(title, items, toItem) {
+  return { title, count: items.length, items: items.slice(0, MAX_LIST).map(toItem), more: Math.max(0, items.length - MAX_LIST) };
+}
+
+// Chat のカード（見出し → 問題ごとの区切り → 1件1行、AN-KANで開くボタン）
+function buildCard(today, issues) {
+  const sections = issues.map((it, i) => ({
+    header: `${it.title}${it.count ? `（${it.count}件）` : ""}`,
+    collapsible: it.items.length > 5,
+    uncollapsibleWidgetsCount: 5,
+    widgets: [
+      ...it.items.map((x) => ({
+        decoratedText: {
+          topLabel: x.sub || undefined,
+          text: x.head,
+          wrapText: true,
+          ...(x.url ? { button: { text: "開く", onClick: { openLink: { url: x.url } } } } : {}),
+        },
+      })),
+      ...(it.more ? [{ textParagraph: { text: `<font color="#80868b">ほか ${it.more}件</font>` } }] : []),
+      ...(it.note ? [{ textParagraph: { text: it.note } }] : []),
+    ],
+  }));
+  return [{
+    cardId: `watch-${today}`,
+    card: {
+      header: { title: "連携の見張り", subtitle: `${today}　気になるところが ${issues.length}種類あります` },
+      sections,
+    },
+  }];
+}
 
 function ymdJST(d = new Date()) {
   return new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Tokyo" }).format(d);
@@ -50,7 +88,7 @@ async function run(request) {
   try {
     const map = await getSalesMap();
     const rows = await sql`
-      SELECT p.prefix, p.ad_number, p.project_name, p.status, s.name AS staff
+      SELECT p.id, p.prefix, p.ad_number, p.project_name, p.status, s.name AS staff
       FROM projects p LEFT JOIN staff_members s ON p.assigned_team_member = s.code
       WHERE COALESCE(p.lost_flag,false) = false AND COALESCE(p.hold_flag,false) = false
         AND p.status <> '残金請求済'
@@ -60,11 +98,11 @@ async function run(request) {
       return s && s.amount > 0;
     });
     if (hits.length) {
-      issues.push(
-        `■ 売上が入っているのに、AN-KANで未完了の案件：${hits.length}件\n` +
-          hits.slice(0, MAX_LIST).map((p) => `・${p.prefix || "AD"}-${p.ad_number} ${p.project_name || ""}（${p.status}・${p.staff || "担当なし"}）`).join("\n") +
-          (hits.length > MAX_LIST ? `\n…ほか${hits.length - MAX_LIST}件` : "")
-      );
+      issues.push(issue("売上が入っているのに、AN-KANで未完了", hits, (p) => ({
+        head: `<b>${p.prefix || "AD"}-${p.ad_number}</b>　${p.project_name || "（名前なし）"}`,
+        sub: `${p.status}・${p.staff || "担当なし"}`,
+        url: projectLink(p.id),
+      })));
     }
   } catch (e) {
     errors.push(`売上とステータスの照合ができませんでした（${e.message}）`);
@@ -93,11 +131,10 @@ async function run(request) {
       .map((k) => ({ k, d: arrival[k], n: waiting[k] }))
       .sort((a, b) => a.d.localeCompare(b.d));
     if (late.length) {
-      issues.push(
-        `■ 入荷予定日を過ぎても入庫待ちの注文：${late.length}件\n` +
-          late.slice(0, MAX_LIST).map((x) => `・${x.k}（予定 ${x.d}・${x.n}点）`).join("\n") +
-          (late.length > MAX_LIST ? `\n…ほか${late.length - MAX_LIST}件` : "")
-      );
+      issues.push(issue("入荷予定日を過ぎても入庫待ち", late, (x) => ({
+        head: `<b>${x.k}</b>　${x.n}点`,
+        sub: `入荷予定 ${x.d}`,
+      })));
     }
   } catch (e) {
     errors.push(`入荷予定の照合ができませんでした（${e.message}）`);
@@ -108,16 +145,16 @@ async function run(request) {
     await ensureHeartbeatTable();
     const hb = await sql`SELECT at FROM watch_heartbeat WHERE name = 'drawing-check'`;
     if (!hb.length) {
-      issues.push("■ 図面・PL/CI通知のGASから、まだ一度も呼ばれた記録がありません");
+      issues.push({ title: "図面・PL/CI通知のGAS", count: 0, items: [], more: 0, note: "まだ一度も呼ばれた記録がありません" });
     } else {
       const hours = (Date.now() - new Date(hb[0].at).getTime()) / 3600_000;
-      if (hours > 3) issues.push(`■ 図面・PL/CI通知のGASが、${Math.floor(hours)}時間動いていません（10分おきのはず）`);
+      if (hours > 3) issues.push({ title: "図面・PL/CI通知のGAS", count: 0, items: [], more: 0, note: `${Math.floor(hours)}時間動いていません（10分おきのはずです）` });
     }
   } catch (e) {
     errors.push(`GASの動作記録を確認できませんでした（${e.message}）`);
   }
 
-  if (errors.length) issues.push("■ 見張りの途中で読めなかったもの\n" + errors.map((x) => `・${x}`).join("\n"));
+  if (errors.length) issues.push({ title: "見張りの途中で読めなかったもの", count: 0, items: [], more: 0, note: errors.join("<br>") });
 
   if (dry) return Response.json({ today, issues });
 
@@ -125,7 +162,8 @@ async function run(request) {
   if (issues.length) {
     const space = await findSpaceByName(SPACE_NAME);
     if (!space) return Response.json({ ok: false, reason: `「${SPACE_NAME}」スペースが見つかりません（AN-KANアプリを追加してください）`, count: issues.length }, { status: 200 });
-    await postToSpace(space.name, `【連携の見張り ${today}】\n\n${issues.join("\n\n")}`);
+    const summary = `連携の見張り ${today}：` + issues.map((it) => `${it.title}${it.count ? ` ${it.count}件` : ""}`).join("／");
+    await postCardToSpace(space.name, summary, buildCard(today, issues));
     posted = true;
   }
   return Response.json({ ok: true, issues: issues.length, posted });
