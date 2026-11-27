@@ -96,6 +96,11 @@ export async function POST(request) {
 async function run(request) {
   const dry = new URL(request.url).searchParams.get("dry") === "1";
   try {
+    // 見張り用：GASから呼ばれた時刻を残す（/api/watch が「止まっていないか」を見る）
+    if (!dry) {
+      await sql`CREATE TABLE IF NOT EXISTS watch_heartbeat (name TEXT PRIMARY KEY, at TIMESTAMPTZ NOT NULL DEFAULT NOW())`;
+      await sql`INSERT INTO watch_heartbeat (name, at) VALUES ('drawing-check', NOW()) ON CONFLICT (name) DO UPDATE SET at = NOW()`;
+    }
     // 1) 案件フォルダの一覧（フォルダID → 案件）
     //    AN-KANが作ったフォルダ（drive_folder_id）に加えて、
     //    過去案件で手動・CSVで貼ったフォルダのリンク（…/folders/<ID>）も対象にする

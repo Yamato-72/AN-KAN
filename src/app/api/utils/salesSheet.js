@@ -201,3 +201,15 @@ export async function overlaySales(projects) {
     return { ...p, revenue_source: has ? "import" : null, sales_date: null };
   });
 }
+
+// 調達管理データ（支払ナビ・在庫ナビのシート）の範囲をまとめて読む（見張り用）
+export async function readDataRanges(ranges) {
+  const serviceAccountKey = process.env.GOOGLE_SERVICE_ACCOUNT_KEY;
+  if (!serviceAccountKey) throw new Error("サービスアカウントが設定されていません");
+  const accessToken = await getAccessToken(JSON.parse(serviceAccountKey));
+  const qs = ranges.map((r) => "ranges=" + encodeURIComponent(r)).join("&");
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${DATA_SPREADSHEET_ID}/values:batchGet?${qs}`;
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
+  if (!res.ok) throw new Error(`シートの読み取りに失敗: ${res.status}`);
+  return ((await res.json()).valueRanges || []).map((v) => v.values || []);
+}

@@ -179,3 +179,13 @@ export async function ensureProjectSpace(project) {
   try { await postToSpace(made.name, lines.join("\n")); } catch (e) { console.error(e); }
   return { created: true, space: made, failed };
 }
+
+// 名前がぴったり同じスペースを探す（「システム見張り」など）
+export async function findSpaceByName(displayName) {
+  let hit = (await listSpaces()).find((s) => s.displayName === displayName);
+  if (!hit) {
+    clearSpaceCache();
+    hit = (await listSpaces()).find((s) => s.displayName === displayName);
+  }
+  return hit || null;
+}

@@ -19,6 +19,7 @@ const PUBLIC_PATHS = [
   "/api/chat/events", // Google Chat「AN-KAN」アプリの受け口
   "/api/dashboard/external-summary", // YSダッシュボード→集計
   "/api/health", // 動作確認（どの版が動いているか）
+  "/api/watch", // GAS→連携の見張り（問題があるときだけ見張りスペースへ）
   "/favicon",
   "/_next/",
 ];
