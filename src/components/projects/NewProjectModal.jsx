@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { X, ChevronDown } from "lucide-react";
 import { useCreateProject } from "@/hooks/useCreateProject";
 import { PROJECT_PREFIXES, DEFAULT_PREFIX, formatProjectNumber } from "@/lib/prefixes";
@@ -54,10 +54,12 @@ export const NewProjectModal = ({
   const [relatedResults, setRelatedResults] = useState([]);
   const [showRelatedSuggestions, setShowRelatedSuggestions] = useState(false);
   const [relatedLabel, setRelatedLabel] = useState(""); // 選択済みの表示ラベル
+  const latestRelatedQuery = useRef(""); // 遅れて返ってきた古い検索結果で候補が開き直さないように
 
   // AD案件を検索（関連元の候補）
   const searchRelated = async (q) => {
     setRelatedQuery(q);
+    latestRelatedQuery.current = q;
     if (!q || q.trim() === "") {
       setRelatedResults([]);
       setShowRelatedSuggestions(false);
@@ -68,6 +70,7 @@ export const NewProjectModal = ({
       if (res.ok) {
         const data = await res.json();
         // AD案件のみを候補にする（修理の親は通常AD）
+        if (latestRelatedQuery.current !== q) return;
         const adOnly = (data || []).filter((p) => (p.prefix || "AD") === "AD");
         setRelatedResults(adOnly.slice(0, 8));
         setShowRelatedSuggestions(adOnly.length > 0);
@@ -82,6 +85,7 @@ export const NewProjectModal = ({
     setFormData((prev) => ({ ...prev, related_project_id: p.id }));
     setRelatedLabel(`${formatProjectNumber(p.prefix, p.ad_number)}　${p.project_name || ""}`);
     setRelatedQuery("");
+    latestRelatedQuery.current = "";
     setRelatedResults([]);
     setShowRelatedSuggestions(false);
   };
@@ -97,6 +101,7 @@ export const NewProjectModal = ({
   const [clients, setClients] = useState([]);
   const [staffList, setStaffList] = useState([]); // 社内担当者の選択肢
   const [showClientSuggestions, setShowClientSuggestions] = useState(false);
+  const [pickedClientName, setPickedClientName] = useState(null); // 候補から選んだ名前（同じ名前の間は候補を出さない）
   const [filteredClients, setFilteredClients] = useState([]);
 
   // 設置業者候補機能
@@ -168,9 +173,9 @@ export const NewProjectModal = ({
     );
     setFilteredClients(filtered);
     setShowClientSuggestions(
-      filtered.length > 0 && formData.client_name !== "",
+      filtered.length > 0 && formData.client_name !== "" && formData.client_name !== pickedClientName,
     );
-  }, [formData.client_name, clients]);
+  }, [formData.client_name, clients, pickedClientName]);
 
   // 設置業者入力時のフィルタリング
   useEffect(() => {
@@ -347,6 +352,7 @@ export const NewProjectModal = ({
     onSuccess: () => {
       onClose();
       setFormData(INITIAL_FORM_DATA);
+      setPickedClientName(null);
       setFormError("");
       // Call the onSuccess callback to refetch data
       if (onSuccess) {
@@ -375,6 +381,7 @@ export const NewProjectModal = ({
       phone_number: client.phone_number || "",
       company_address: client.company_address || "",
     }));
+    setPickedClientName(client.client_name);
     setShowClientSuggestions(false);
   };
 
@@ -397,6 +404,7 @@ export const NewProjectModal = ({
     setFormError("");
     setFormData(INITIAL_FORM_DATA);
     setShowClientSuggestions(false);
+    setPickedClientName(null);
     setShowContractorSuggestions(false);
     setRelatedLabel("");
     setRelatedQuery("");
@@ -560,6 +568,7 @@ export const NewProjectModal = ({
                     <button
                       key={p.id}
                       type="button"
+                      onMouseDown={(e) => e.preventDefault()}
                       onClick={() => selectRelated(p)}
                       className="w-full px-4 py-3 text-left hover:bg-gray-50 border-b border-gray-100 last:border-b-0"
                     >
@@ -589,8 +598,12 @@ export const NewProjectModal = ({
               onChange={(e) => handleInputChange("client_name", e.target.value)}
               onFocus={() =>
                 formData.client_name &&
+                formData.client_name !== pickedClientName &&
                 setShowClientSuggestions(filteredClients.length > 0)
               }
+              onBlur={() => setTimeout(() => setShowClientSuggestions(false), 150)}
+              onKeyDown={(e) => e.key === "Escape" && setShowClientSuggestions(false)}
+              autoComplete="off"
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
               placeholder="取引先名を入力"
               required
@@ -601,6 +614,7 @@ export const NewProjectModal = ({
                   <button
                     key={client.id}
                     type="button"
+                    onMouseDown={(e) => e.preventDefault()}
                     onClick={() => handleClientSelect(client)}
                     className="w-full px-4 py-3 text-left hover:bg-gray-50 border-b border-gray-100 last:border-b-0"
                   >
@@ -812,6 +826,9 @@ export const NewProjectModal = ({
                   handleInputChange("installation_contractor", e.target.value)
                 }
                 onFocus={() => setActiveContractorField("installation_contractor")}
+                onBlur={() => setTimeout(() => { setShowContractorSuggestions(false); setActiveContractorField(null); }, 150)}
+                onKeyDown={(e) => e.key === "Escape" && setShowContractorSuggestions(false)}
+                autoComplete="off"
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg"
                 placeholder="設置業者名を入力"
               />
@@ -828,6 +845,9 @@ export const NewProjectModal = ({
                   handleInputChange("installation_contractor2", e.target.value)
                 }
                 onFocus={() => setActiveContractorField("installation_contractor2")}
+                onBlur={() => setTimeout(() => { setShowContractorSuggestions(false); setActiveContractorField(null); }, 150)}
+                onKeyDown={(e) => e.key === "Escape" && setShowContractorSuggestions(false)}
+                autoComplete="off"
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg"
                 placeholder="2社目がある場合"
               />
@@ -839,6 +859,7 @@ export const NewProjectModal = ({
                   <button
                     key={contractor.id}
                     type="button"
+                    onMouseDown={(e) => e.preventDefault()}
                     onClick={() => handleContractorSelect(contractor)}
                     className="w-full px-4 py-3 text-left hover:bg-gray-50 border-b border-gray-100 last:border-b-0"
                   >

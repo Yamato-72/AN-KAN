@@ -17,6 +17,7 @@ export const InstallationInfoModal = ({
   const [showContractorSuggestions, setShowContractorSuggestions] =
     useState(false);
   const [filteredContractors, setFilteredContractors] = useState([]);
+  const [pickedContractor, setPickedContractor] = useState(null); // 候補から選んだ名前（同じ間は候補を出さない）
 
   // 設置業者一覧を取得
   const fetchContractors = async () => {
@@ -44,12 +45,13 @@ export const InstallationInfoModal = ({
       contractorItem.contractor_name.toLowerCase().includes(query),
     );
     setFilteredContractors(filtered);
-    setShowContractorSuggestions(filtered.length > 0 && contractor !== "");
-  }, [contractor, contractors]);
+    setShowContractorSuggestions(filtered.length > 0 && contractor !== "" && contractor !== pickedContractor);
+  }, [contractor, contractors, pickedContractor]);
 
   useEffect(() => {
     if (show) {
       setContractor(initialContractor);
+      setPickedContractor(initialContractor || null); // 既に入っている名前では候補を開かない
       setDate(initialDate);
       setErrors({});
       // 設置業者一覧を取得
@@ -60,6 +62,7 @@ export const InstallationInfoModal = ({
   // 設置業者選択時の処理
   const handleContractorSelect = (contractorItem) => {
     setContractor(contractorItem.contractor_name);
+    setPickedContractor(contractorItem.contractor_name);
     setShowContractorSuggestions(false);
   };
 
@@ -138,8 +141,12 @@ export const InstallationInfoModal = ({
               }}
               onFocus={() =>
                 contractor &&
+                contractor !== pickedContractor &&
                 setShowContractorSuggestions(filteredContractors.length > 0)
               }
+              onBlur={() => setTimeout(() => setShowContractorSuggestions(false), 150)}
+              onKeyDown={(e) => e.key === "Escape" && setShowContractorSuggestions(false)}
+              autoComplete="off"
               className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none ${
                 errors.contractor ? "border-red-300" : "border-gray-300"
               }`}
@@ -151,6 +158,7 @@ export const InstallationInfoModal = ({
                   <button
                     key={contractorItem.id}
                     type="button"
+                    onMouseDown={(e) => e.preventDefault()}
                     onClick={() => handleContractorSelect(contractorItem)}
                     className="w-full px-4 py-3 text-left hover:bg-gray-50 border-b border-gray-100 last:border-b-0"
                   >
