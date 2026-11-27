@@ -16,6 +16,13 @@ import { getSessionFromRequest } from "@/lib/authz";
 const SPACE_NAME = "システム見張り";
 const MAX_LIST = 10;
 
+// 「見張りから外す」ボタンの行き先（AN-KANのURLから作る）
+function ignoreLink(id) {
+  const base = process.env.ANKAN_PROJECT_URL_BASE;
+  if (!base || !id) return "";
+  try { return `${new URL(base).origin}/api/watch/ignore?id=${id}`; } catch { return ""; }
+}
+
 function projectLink(id) {
   const base = process.env.ANKAN_PROJECT_URL_BASE;
   return base && id ? `${base.replace(/\/$/, "")}/${id}` : "";
@@ -41,6 +48,11 @@ function buildCard(today, issues) {
           ...(x.url ? { button: { text: "開く", onClick: { openLink: { url: x.url } } } } : {}),
         },
       })),
+      ...(it.items.some((x) => x.ignoreUrl)
+        ? [{ textParagraph: { text: `<font color="#80868b">わざと止めている案件は、下のボタンで見張りから外せます</font>` } },
+           { buttonList: { buttons: it.items.filter((x) => x.ignoreUrl).slice(0, 5).map((x) => ({
+               text: `${x.label}を外す`, onClick: { openLink: { url: x.ignoreUrl } } })) } }]
+        : []),
       ...(it.more ? [{ textParagraph: { text: `<font color="#80868b">ほか ${it.more}件</font>` } }] : []),
       ...(it.note ? [{ textParagraph: { text: it.note } }] : []),
     ],
@@ -84,14 +96,16 @@ async function run(request) {
   const errors = [];
   const today = ymdJST();
 
-  // 1. 売上入力済み × 未完了
+  // 1. 売上入力済み × 未完了（「見張りから外す」を押した案件は除く）
   try {
+    await sql`CREATE TABLE IF NOT EXISTS watch_ignore (project_id INTEGER PRIMARY KEY, created_by TEXT, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`;
     const map = await getSalesMap();
     const rows = await sql`
       SELECT p.id, p.prefix, p.ad_number, p.project_name, p.status, s.name AS staff
       FROM projects p LEFT JOIN staff_members s ON p.assigned_team_member = s.code
       WHERE COALESCE(p.lost_flag,false) = false AND COALESCE(p.hold_flag,false) = false
         AND p.status <> '残金請求済'
+        AND p.id NOT IN (SELECT project_id FROM watch_ignore)
     `;
     const hits = rows.filter((p) => {
       const s = map[normalizeProjectNumber(`${p.prefix || "AD"}-${p.ad_number}`)];
@@ -99,9 +113,11 @@ async function run(request) {
     });
     if (hits.length) {
       issues.push(issue("売上が入っているのに、AN-KANで未完了", hits, (p) => ({
+        label: `${p.prefix || "AD"}-${p.ad_number}`,
         head: `<b>${p.prefix || "AD"}-${p.ad_number}</b>　${p.project_name || "（名前なし）"}`,
         sub: `${p.status}・${p.staff || "担当なし"}`,
         url: projectLink(p.id),
+        ignoreUrl: ignoreLink(p.id),
       })));
     }
   } catch (e) {
