@@ -1,3 +1,4 @@
+import { useStockSummary, STOCK_STAGES } from "@/lib/stockSummary";
 import { formatProjectNumber } from "@/lib/prefixes";
 import {
   FileText,
@@ -9,6 +10,7 @@ import {
   Flag,
   AlertTriangle,
   User,
+  Package,
 } from "lucide-react";
 import { StatusProgressBar } from "@/components/StatusProgressBar";
 import { getStatusColor, getStatusIcon, getStatusText } from "@/utils/status";
@@ -199,6 +201,7 @@ export const ProjectCard = ({
                 </span>
               </div>
             )}
+            <StockLine project={project} />
             {project.location && (
               <div className="flex items-center gap-2 text-sm text-gray-600">
                 <MapPin className="h-4 w-4 text-gray-400 flex-shrink-0" />
@@ -305,3 +308,28 @@ export const ProjectCard = ({
 
 
 
+
+
+// 物の状態（在庫ナビ・支払ナビから自動）。数がある段だけ出す
+function StockLine({ project }) {
+  const m = useStockSummary(project.prefix, project.ad_number);
+  if (!m || !m.total) return null;
+  const parts = STOCK_STAGES.filter(([k]) => m[k] > 0);
+  const done = m.shipped === m.total;
+  return (
+    <div className="flex items-start gap-2 text-sm text-gray-600">
+      <Package className="h-4 w-4 text-gray-400 flex-shrink-0 mt-0.5" />
+      <span className="flex flex-wrap gap-x-2 gap-y-0.5">
+        {done ? (
+          <span>全{m.total}台 出荷済み</span>
+        ) : (
+          parts.map(([k, label]) => (
+            <span key={k} className={k === "waiting" ? "font-semibold text-gray-800" : ""}>
+              {label} {m[k]}
+            </span>
+          ))
+        )}
+      </span>
+    </div>
+  );
+}

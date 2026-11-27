@@ -1,4 +1,5 @@
 import sql from "@/app/api/utils/sql";
+import { autoAdvanceToArranging } from "@/app/api/utils/autoArrange";
 import { findProjectSpace, postToSpace, getServiceToken } from "@/app/api/utils/googleChat";
 import { formatProjectNumber } from "@/lib/prefixes";
 
@@ -101,6 +102,14 @@ async function run(request) {
       await sql`CREATE TABLE IF NOT EXISTS watch_heartbeat (name TEXT PRIMARY KEY, at TIMESTAMPTZ NOT NULL DEFAULT NOW())`;
       await sql`INSERT INTO watch_heartbeat (name, at) VALUES ('drawing-check', NOW()) ON CONFLICT (name) DO UPDATE SET at = NOW()`;
     }
+    // 0) ついでに：受注済み → 手配中 の自動切り替え（支払い済み・引当あり）
+    let arranged = [];
+    try {
+      arranged = await autoAdvanceToArranging({ dry });
+    } catch (e) {
+      console.error("手配中への自動切り替えに失敗:", e.message);
+    }
+
     // 1) 案件フォルダの一覧（フォルダID → 案件）
     //    AN-KANが作ったフォルダ（drive_folder_id）に加えて、
     //    過去案件で手動・CSVで貼ったフォルダのリンク（…/folders/<ID>）も対象にする
@@ -153,6 +162,7 @@ async function run(request) {
     if (dry) {
       return json({
         message: "確認のみ（投稿・記録はしていません）",
+        arranged,
         found: found.map(({ file, project }) => ({ project: formatProjectNumber(project.prefix, project.ad_number), kind: file.kind.key, name: file.name })),
       });
     }
@@ -210,6 +220,7 @@ async function run(request) {
     }
     return json({
       message: results.length ? "通知しました" : "新しい書類はありません",
+      arranged: arranged.length ? arranged : undefined,
       recordedOnly: recordedOnly ? `初回のため ${recordedOnly} 件は記録だけしました（通知なし）` : undefined,
       results,
     });

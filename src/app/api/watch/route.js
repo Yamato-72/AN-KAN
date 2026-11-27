@@ -2,6 +2,7 @@ import sql from "@/app/api/utils/sql";
 import { findSpaceByName, postCardToSpace } from "@/app/api/utils/googleChat";
 import { getSalesMap, normalizeProjectNumber, readDataRanges } from "@/app/api/utils/salesSheet";
 import { getSessionFromRequest } from "@/lib/authz";
+import { loadStock, summaryMap } from "@/app/api/utils/stockState";
 
 // ============================================================
 // 連携の見張り（平日の朝にGASが呼ぶ）
@@ -154,6 +155,55 @@ async function run(request) {
     }
   } catch (e) {
     errors.push(`入荷予定の照合ができませんでした（${e.message}）`);
+  }
+
+  // 2b. ステータスと物の状態のずれ
+  //   ・受注済みのまま14日、サプライヤーへの支払いも引当もない → 発注の依頼漏れかも
+  //   ・手配中で、物が全部出荷済み → 残金の請求漏れかも
+  try {
+    const { rows: stock, paid } = await loadStock();
+    const sum = summaryMap(stock);
+    const allocated = new Set(stock.filter((r) => r.ship).map((r) => r.ship));
+    const projs = await sql`
+      SELECT p.id, p.prefix, p.ad_number, p.project_name, p.status, s.name AS staff,
+        (SELECT MAX(a.created_at) FROM project_activities a
+          WHERE a.project_id = p.id AND a.activity_type = 'status_update' AND a.description LIKE '%「受注済み」に%') AS ordered_at,
+        p.updated_at
+      FROM projects p LEFT JOIN staff_members s ON p.assigned_team_member = s.code
+      WHERE p.status IN ('受注済み', '手配中')
+        AND COALESCE(p.lost_flag,false) = false AND COALESCE(p.hold_flag,false) = false
+        AND COALESCE(p.prefix,'AD') <> 'SP'
+        AND p.id NOT IN (SELECT project_id FROM watch_ignore)
+    `;
+    const keyOf = (p) => normalizeProjectNumber(`${p.prefix || "AD"}-${p.ad_number}`);
+    const days = (d) => (d ? Math.floor((Date.now() - new Date(d).getTime()) / 86400000) : null);
+    const toRow = (p, sub) => ({
+      label: `${p.prefix || "AD"}-${p.ad_number}`,
+      head: `<b>${p.prefix || "AD"}-${p.ad_number}</b>　${p.project_name || "（名前なし）"}`,
+      sub: `${sub}・${p.staff || "担当なし"}`,
+      url: projectLink(p.id),
+      ignoreUrl: ignoreLink(p.id),
+    });
+    const notOrdered = projs.filter((p) => {
+      if (p.status !== "受注済み") return false;
+      const k = keyOf(p);
+      if (paid.has(k) || allocated.has(k)) return false;
+      const d = days(p.ordered_at || p.updated_at);
+      return d !== null && d >= 14;
+    });
+    if (notOrdered.length) {
+      issues.push(issue("受注済みのまま2週間、発注も引当もない", notOrdered, (p) => toRow(p, `受注から${days(p.ordered_at || p.updated_at)}日`)));
+    }
+    const allShipped = projs.filter((p) => {
+      if (p.status !== "手配中") return false;
+      const m = sum[keyOf(p)];
+      return m && m.total > 0 && m.shipped === m.total;
+    });
+    if (allShipped.length) {
+      issues.push(issue("物は全部出荷済みなのに、まだ手配中（残金の請求は？）", allShipped, (p) => toRow(p, `出荷済み ${sum[keyOf(p)].shipped}台`)));
+    }
+  } catch (e) {
+    errors.push(`ステータスと物の状態の照合ができませんでした（${e.message}）`);
   }
 
   // 3. 図面・PL/CI通知のGASが動いているか（最後に呼ばれてから3時間以上空いていたら知らせる）
