@@ -1,4 +1,5 @@
 "use client";
+import { matchesProjectSearch } from "@/lib/projectSearch";
 
 import { useState, useEffect, useMemo } from "react";
 import { Sidebar } from "@/components/layout/Sidebar";
@@ -65,12 +66,7 @@ const fetchProjects = async () => {
     const q = searchQuery.toLowerCase();
 
     let filtered = projects.filter((project) => {
-      const matchesSearch =
-        (project.project_name || "").toLowerCase().includes(q) ||
-        project.client_name?.toLowerCase().includes(q) ||
-        project.remarks?.toLowerCase().includes(q) ||
-        (project.ad_number &&
-          project.ad_number.toString().toLowerCase().includes(q));
+      const matchesSearch = matchesProjectSearch(project, searchQuery);
 
       return matchesSearch;
     });

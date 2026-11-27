@@ -1,4 +1,5 @@
 "use client";
+import { matchesProjectSearch } from "@/lib/projectSearch";
 
 import { useState, useMemo, useEffect } from "react";
 import { Sidebar } from "@/components/layout/Sidebar";
@@ -103,14 +104,7 @@ export default function AllProjectsPage() {
         matchesFilter = project.status === selectedFilter;
       }
 
-      const q = searchQuery.toLowerCase();
-
-      const matchesSearch =
-        (project.project_name || "").toLowerCase().includes(q) ||
-        (project.client_name || "").toLowerCase().includes(q) ||
-        (project.location || "").toLowerCase().includes(q) ||
-        (project.ad_number != null &&
-          project.ad_number.toString().includes(searchQuery));
+      const matchesSearch = matchesProjectSearch(project, searchQuery);
 
       // 期の絞り込み
       const matchesPeriod =
