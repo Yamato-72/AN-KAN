@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic"; // ビルド時に固定されないように（毎回シートを読む）
 import { loadStock, summaryMap } from "@/app/api/utils/stockState";
 import { gzipJson } from "@/app/api/utils/gzipJson";
 
