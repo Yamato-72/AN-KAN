@@ -1,5 +1,5 @@
 import sql from "@/app/api/utils/sql";
-import { autoAdvanceToArranging } from "@/app/api/utils/autoArrange";
+import { autoAdvanceToArranging, autoAdvanceSp } from "@/app/api/utils/autoArrange";
 import { findProjectSpace, postToSpace, getServiceToken } from "@/app/api/utils/googleChat";
 import { formatProjectNumber } from "@/lib/prefixes";
 
@@ -109,6 +109,13 @@ async function run(request) {
     } catch (e) {
       console.error("手配中への自動切り替えに失敗:", e.message);
     }
+    // 0b) SP（在庫の発注）：手配中へ寄せる／全部検品済みなら検品完了
+    let spMoved = [];
+    try {
+      spMoved = await autoAdvanceSp({ dry });
+    } catch (e) {
+      console.error("SPの自動切り替えに失敗:", e.message);
+    }
 
     // 1) 案件フォルダの一覧（フォルダID → 案件）
     //    AN-KANが作ったフォルダ（drive_folder_id）に加えて、
@@ -163,6 +170,7 @@ async function run(request) {
       return json({
         message: "確認のみ（投稿・記録はしていません）",
         arranged,
+        spMoved,
         found: found.map(({ file, project }) => ({ project: formatProjectNumber(project.prefix, project.ad_number), kind: file.kind.key, name: file.name })),
       });
     }
@@ -221,6 +229,7 @@ async function run(request) {
     return json({
       message: results.length ? "通知しました" : "新しい書類はありません",
       arranged: arranged.length ? arranged : undefined,
+      spMoved: spMoved.length ? spMoved : undefined,
       recordedOnly: recordedOnly ? `初回のため ${recordedOnly} 件は記録だけしました（通知なし）` : undefined,
       results,
     });

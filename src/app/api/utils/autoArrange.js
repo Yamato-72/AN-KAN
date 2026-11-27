@@ -30,3 +30,48 @@ export async function autoAdvanceToArranging({ dry = false } = {}) {
   }
   return moved;
 }
+
+// ============================================================
+// SP（在庫の発注）のステータスを自動で進める（2026-11-27）
+//   - SPにリード・打合せ・受注はない → 手配中へ寄せる
+//   - そのSPで発注した物が全部、入庫・検品を終えたら → 検品完了（中身は「残金請求済」）
+//     （物が1つも登録されていないSPは動かさない）
+// ============================================================
+export async function autoAdvanceSp({ dry = false } = {}) {
+  const { rows } = await loadStock();
+  const byOrder = {};
+  rows.forEach((it) => {
+    if (!/^SP-/.test(it.order)) return;
+    (byOrder[it.order] ||= []).push(it);
+  });
+  const cands = await sql`
+    SELECT id, prefix, ad_number, status FROM projects
+    WHERE prefix = 'SP' AND status <> '残金請求済'
+      AND COALESCE(lost_flag,false) = false AND COALESCE(hold_flag,false) = false
+  `;
+  const moved = [];
+  for (const p of cands) {
+    const key = normalizeProjectNumber(`SP-${p.ad_number}`);
+    const items = byOrder[key] || [];
+    const pending = items.filter((it) => !it.archived && !it.ship && (it.status === "入庫待ち" || it.status === "検品待ち"));
+    let to = null;
+    let why = "";
+    if (items.length && !pending.length) {
+      to = "残金請求済";
+      why = `発注した${items.length}点が全部検品済みになったので自動で検品完了に`;
+    } else if (p.status !== "手配中") {
+      to = "手配中";
+      why = "SPにはリード・打合せ・受注がないので自動で手配中に";
+    }
+    if (!to) continue;
+    moved.push({ id: p.id, key, from: p.status, to });
+    if (dry) continue;
+    await sql`UPDATE projects SET status = ${to}, updated_at = NOW() WHERE id = ${p.id} AND status = ${p.status}`;
+    const label = to === "残金請求済" ? "検品完了" : to;
+    await sql`
+      INSERT INTO project_activities (project_id, activity_type, description)
+      VALUES (${p.id}, 'status_update', ${`ステータスが「${p.status}」から「${label}」に変更されました（${why}）`})
+    `;
+  }
+  return moved;
+}

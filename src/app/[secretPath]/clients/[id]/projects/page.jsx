@@ -257,7 +257,7 @@ function ClientProjectsPage({ params }) {
                                 project.status,
                               )}`}
                             >
-                              {getStatusText(project.status)}
+                              {getStatusText(project.status, project.prefix)}
                             </span>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">

@@ -1,4 +1,5 @@
 "use client";
+import { SpToggle, useShowSp, isSpProject } from "@/components/projects/SpToggle";
 import { matchesProjectSearch } from "@/lib/projectSearch";
 
 import { useState, useMemo, useEffect } from "react";
@@ -17,6 +18,7 @@ import { useDashboardStats } from "@/hooks/useDashboardStats";
 
 export default function DashboardPage({ params }) {
   const [selectedFilter, setSelectedFilter] = useState("in-progress");
+  const [showSp, toggleSp] = useShowSp();
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState("grid");
   const [showNewProjectModal, setShowNewProjectModal] = useState(false);
@@ -85,7 +87,8 @@ export default function DashboardPage({ params }) {
 
     const matchesSearch = matchesProjectSearch(project, searchQuery);
 
-    return matchesFilter && matchesSearch;
+    const matchesSp = showSp || !isSpProject(project) || /\bSP/i.test(searchQuery || ""); // 「SP-」で検索したときは出す
+    return matchesFilter && matchesSearch && matchesSp;
   });
 
   // ===== ソート（指定5種類だけ）=====
@@ -112,7 +115,7 @@ export default function DashboardPage({ params }) {
   });
 
   return sorted;
-}, [projects, selectedFilter, searchQuery, sortKey, sortOrder]);
+}, [projects, selectedFilter, searchQuery, sortKey, sortOrder, showSp]);
 
 
   return (
@@ -148,6 +151,7 @@ export default function DashboardPage({ params }) {
 
 
         <div className="flex justify-end items-center gap-2">
+          <SpToggle showSp={showSp} onToggle={toggleSp} count={(projects || []).filter(isSpProject).length} />
           {/* 並べ替え */}
           <select
             className="border rounded px-3 py-1 text-sm bg-white"

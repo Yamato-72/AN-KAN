@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { STATUS_STEPS } from "@/utils/status";
+import { STATUS_STEPS as ALL_STEPS } from "@/utils/status";
+import { SP_STEPS } from "@/lib/prefixes";
 import { useUpdateProjectStatus } from "@/hooks/useUpdateProjectStatus";
 import { InstallationInfoModal } from "@/components/projects/InstallationInfoModal";
 import { InvoiceTemplateModal } from "@/components/projects/InvoiceTemplateModal";
@@ -21,7 +22,16 @@ export const StatusProgressBar = ({
   const [showRevertModal, setShowRevertModal] = useState(false);
   const [targetStatus, setTargetStatus] = useState("");
 
-  const currentIndex = STATUS_STEPS.findIndex(
+  // SP（在庫の発注）は「手配中 → 検品完了」の2段階だけ
+  const isSP = (project?.prefix || "").toUpperCase() === "SP";
+  const STATUS_STEPS = isSP
+    ? ALL_STEPS.filter((st) => SP_STEPS.includes(st.key)).map((st) =>
+        st.key === "残金請求済" ? { ...st, label: "検品完了" } : st,
+      )
+    : ALL_STEPS;
+  const spBefore = isSP && !SP_STEPS.includes(currentStatus); // 古いSPがリード・打合せ・受注のまま
+
+  const currentIndex = spBefore ? -1 : STATUS_STEPS.findIndex(
     (step) => step.key === currentStatus,
   );
 
@@ -79,7 +89,7 @@ export const StatusProgressBar = ({
 
     // 手配中 → 完了（残金請求済）の遷移で、請求書テンプレートモーダルを表示
     //   （旧フローでは「設置完了」がこの起点だった。5段階化で「手配中」に変更）
-    if (currentStatus === "手配中") {
+    if (currentStatus === "手配中" && !isSP) {
       setShowInvoiceModal(true);
       return;
     }

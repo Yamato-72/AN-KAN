@@ -28,8 +28,16 @@ export const PREFIX_NUMBER_FLOOR = {
 //   ここに載っていない接頭辞（AD など）は従来通り「リード」から。
 export const PREFIX_INITIAL_STATUS = {
   TS: "打ち合わせ中",
-  SP: "打ち合わせ中",
+  SP: "手配中", // SPは作った＝発注を決めた、なので最初から手配中（2026-11-27）
 };
+
+// SP（在庫の発注）は請求がないので、「完了」＝検品完了
+//   画面の段階表示は「手配中 → 検品完了」の2つだけ
+export const SP_STEPS = ["手配中", "残金請求済"];
+export function statusLabelFor(prefix, status) {
+  if (normalizePrefix(prefix) === "SP" && status === "残金請求済") return "検品完了";
+  return null; // null のときは通常のラベルを使う
+}
 
 export const DEFAULT_INITIAL_STATUS = "リード";
 

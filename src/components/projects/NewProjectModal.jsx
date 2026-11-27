@@ -426,6 +426,12 @@ export const NewProjectModal = ({
     e.preventDefault();
     setFormError("");
 
+    // SP（在庫の発注）は取引先＝自社・問い合わせ日＝今日で自動的に埋める
+    if (formData.prefix === "SP") {
+      formData.client_name = formData.client_name || "ヤマトサイネージ株式会社";
+      formData.inquiry_date = formData.inquiry_date || new Date().toLocaleDateString("sv-SE");
+    }
+
     if (
       !formData.ad_number ||
       !formData.client_name ||
@@ -475,6 +481,7 @@ export const NewProjectModal = ({
   };
 
   if (!show) return null;
+  const isSP = formData.prefix === "SP";
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -628,6 +635,12 @@ export const NewProjectModal = ({
             </div>
           )}
 
+          {isSP && (
+            <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
+              SP（在庫の発注）は、番号と名前だけで作れます。作った時点で「手配中」になり、物が全部検品済みになると自動で「検品完了」になります。
+            </p>
+          )}
+          {!isSP && (<>
           <div className="relative">
             <label className="block text-sm font-medium text-gray-700 mb-2">
               取引先名 <span className="text-red-500">*</span>
@@ -805,6 +818,7 @@ export const NewProjectModal = ({
               />
             </div>
           </div>
+          </>)}
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -840,6 +854,7 @@ export const NewProjectModal = ({
             </p>
           </div>
 
+          {!isSP && (<>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -988,6 +1003,7 @@ export const NewProjectModal = ({
               数値のみ入力してください（例：500000）
             </p>
           </div>
+          </>)}
 
           <div className="flex gap-3 pt-4">
             <button

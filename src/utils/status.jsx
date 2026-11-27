@@ -55,7 +55,9 @@ export const getStatusIcon = (status) => {
   }
 };
 
-export const getStatusText = (status) => {
+export const getStatusText = (status, prefix) => {
+  // SP（在庫の発注）は請求がないので、完了＝検品完了と表示
+  if (String(prefix || "").toUpperCase() === "SP" && status === "残金請求済") return "検品完了";
   return status; // Since the status is already in Japanese
 };
 

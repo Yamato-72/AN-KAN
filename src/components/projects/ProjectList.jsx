@@ -225,7 +225,7 @@ export const ProjectList = ({
                           project.status
                         )}`}
                       >
-                        {getStatusText(project.status)}
+                        {getStatusText(project.status, project.prefix)}
                       </span>
                       <StockStateText project={project} />
                     </td>

@@ -1,4 +1,5 @@
 "use client";
+import { SpToggle, useShowSp, isSpProject } from "@/components/projects/SpToggle";
 import { matchesProjectSearch } from "@/lib/projectSearch";
 
 import { useState, useMemo, useEffect } from "react";
@@ -22,6 +23,7 @@ export default function AllProjectsPage() {
 
   // ✅ all があるならフィルタで特別扱いする
   const [selectedFilter, setSelectedFilter] = useState("all");
+  const [showSp, toggleSp] = useShowSp();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState("grid");
@@ -110,7 +112,8 @@ export default function AllProjectsPage() {
       const matchesPeriod =
         periodFilter === "all" || periodOf(project) === Number(periodFilter);
 
-      return matchesFilter && matchesSearch && matchesPeriod;
+      const matchesSp = showSp || !isSpProject(project) || /\bSP/i.test(searchQuery || ""); // 「SP-」で検索したときは出す
+      return matchesFilter && matchesSearch && matchesPeriod && matchesSp;
     });
 
     const keyMap = {
@@ -174,7 +177,7 @@ export default function AllProjectsPage() {
     });
 
     return sorted; // ← ★ これが無いと絶対に反映されない
-  }, [projects, selectedFilter, searchQuery, sortKey, sortOrder, periodFilter]);
+  }, [projects, selectedFilter, searchQuery, sortKey, sortOrder, periodFilter, showSp]);
 
   return (
     <div className="min-h-screen bg-gray-50 font-inter">
@@ -266,6 +269,9 @@ export default function AllProjectsPage() {
         </div>
 
         <ProjectFilterBar selectedFilter={selectedFilter} onFilterSelect={setSelectedFilter} />
+        <div className="px-4 lg:pl-24 -mt-2 mb-4 flex justify-end">
+          <SpToggle showSp={showSp} onToggle={toggleSp} count={(projects || []).filter(isSpProject).length} />
+        </div>
 
         {viewMode === "grid" ? (
           <ProjectGrid
