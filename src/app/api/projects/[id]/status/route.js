@@ -302,6 +302,13 @@ export async function PUT(request, { params }) {
         }
       } catch (e) {
         console.error("Chatスペースの自動作成に失敗:", e.message);
+        // 失敗したことを案件のログに残す（気づけるように）
+        try {
+          await sql`
+            INSERT INTO project_activities (project_id, activity_type, description)
+            VALUES (${id}, 'chat_space_failed', ${"Chatスペースを自動で作れませんでした：" + String(e.message).slice(0, 200)})
+          `;
+        } catch {}
       }
     }
 
