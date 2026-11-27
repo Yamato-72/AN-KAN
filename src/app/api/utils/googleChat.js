@@ -1,5 +1,5 @@
 import sql from "@/app/api/utils/sql";
-import { getDelegateToken, getSecret } from "@/app/api/utils/chatDelegate";
+import { getDelegateToken, getSecret, listDelegateSpaces, clearDelegateSpaces } from "@/app/api/utils/chatDelegate";
 import { createSign } from "crypto";
 
 // ============================================================
@@ -236,6 +236,28 @@ export async function ensureProjectSpace(project) {
   const prefix = project.prefix || "AD";
   const { space } = await findProjectSpace(prefix, project.ad_number);
   if (space) return { created: false, space };
+  // AN-KANアプリが入っていない、手で作ったスペースも探す（和田さんが入っているもの）
+  clearDelegateSpaces();
+  const mine = await listDelegateSpaces();
+  if (mine) {
+    const re = new RegExp(`(^|[^A-Za-z])${prefix}[-\\s]?0*${parseInt(project.ad_number, 10)}(?!\\d)`, "i");
+    const hit = mine.find((sp) => re.test(sp.displayName));
+    if (hit) {
+      // そのスペースにAN-KANアプリを入れて、通知が届くようにする
+      let appJoined = false;
+      try {
+        const token = await getDelegateToken();
+        const r = await fetch(`https://chat.googleapis.com/v1/${hit.name}/members`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json; charset=UTF-8" },
+          body: JSON.stringify({ member: { name: "users/app", type: "BOT" } }),
+        });
+        appJoined = r.ok || r.status === 409; // 409 = もう入っている
+      } catch (e) { console.error(e); }
+      try { await rememberProjectSpace(prefix, project.ad_number, hit); } catch (e) { console.error(e); }
+      return { created: false, space: hit, appJoined };
+    }
+  }
   const label = `${prefix}-${String(project.ad_number)}`;
   const { space: made, displayName, failed } = await createProjectSpace({
     label,

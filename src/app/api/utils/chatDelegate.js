@@ -13,6 +13,7 @@ export const DELEGATE_SCOPES = [
   "https://www.googleapis.com/auth/chat.spaces.create", // スペースを作る
   "https://www.googleapis.com/auth/chat.memberships", // 人を入れる
   "https://www.googleapis.com/auth/chat.memberships.app", // AN-KANアプリを入れる
+  "https://www.googleapis.com/auth/chat.spaces.readonly", // 自分が入っているスペースを見る（二重作成を防ぐ）
   "openid",
   "email",
 ];
@@ -109,4 +110,33 @@ export async function getDelegateToken() {
 }
 export function clearDelegateToken() {
   tokenCache = { token: null, exp: 0 };
+}
+
+// 許可した人が入っているスペースの一覧（二重作成を防ぐため。許可が無い・古いときは null）
+let userSpaceCache = { list: null, exp: 0 };
+export async function listDelegateSpaces() {
+  if (userSpaceCache.list && userSpaceCache.exp > Date.now()) return userSpaceCache.list;
+  const token = await getDelegateToken();
+  if (!token) return null;
+  const list = [];
+  let pageToken = "";
+  do {
+    const url = new URL("https://chat.googleapis.com/v1/spaces");
+    url.searchParams.set("pageSize", "1000");
+    url.searchParams.set("filter", 'spaceType = "SPACE"');
+    if (pageToken) url.searchParams.set("pageToken", pageToken);
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+    if (!res.ok) {
+      console.error("和田さんのスペース一覧が取れません（許可のし直しが必要かも）:", res.status);
+      return null;
+    }
+    const data = await res.json();
+    (data.spaces || []).forEach((sp) => list.push({ name: sp.name, displayName: sp.displayName || "" }));
+    pageToken = data.nextPageToken || "";
+  } while (pageToken);
+  userSpaceCache = { list, exp: Date.now() + 5 * 60_000 };
+  return list;
+}
+export function clearDelegateSpaces() {
+  userSpaceCache = { list: null, exp: 0 };
 }
