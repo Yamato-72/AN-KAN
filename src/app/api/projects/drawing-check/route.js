@@ -1,5 +1,5 @@
 import sql from "@/app/api/utils/sql";
-import { autoAdvanceToArranging, autoAdvanceSp } from "@/app/api/utils/autoArrange";
+import { autoAdvanceToArranging, autoAdvanceSp, syncProductNumbers } from "@/app/api/utils/autoArrange";
 import { findProjectSpace, postToSpace, getServiceToken } from "@/app/api/utils/googleChat";
 import { formatProjectNumber } from "@/lib/prefixes";
 
@@ -116,6 +116,13 @@ async function run(request) {
     } catch (e) {
       console.error("SPの自動切り替えに失敗:", e.message);
     }
+    // 0c) 支払ナビで付いた製品番号（YS番号）をAN-KANへ返す
+    let productNumbers = [];
+    try {
+      productNumbers = await syncProductNumbers({ dry });
+    } catch (e) {
+      console.error("製品番号の取り込みに失敗:", e.message);
+    }
 
     // 1) 案件フォルダの一覧（フォルダID → 案件）
     //    AN-KANが作ったフォルダ（drive_folder_id）に加えて、
@@ -171,6 +178,7 @@ async function run(request) {
         message: "確認のみ（投稿・記録はしていません）",
         arranged,
         spMoved,
+        productNumbers,
         found: found.map(({ file, project }) => ({ project: formatProjectNumber(project.prefix, project.ad_number), kind: file.kind.key, name: file.name })),
       });
     }
@@ -230,6 +238,7 @@ async function run(request) {
       message: results.length ? "通知しました" : "新しい書類はありません",
       arranged: arranged.length ? arranged : undefined,
       spMoved: spMoved.length ? spMoved : undefined,
+      productNumbers: productNumbers.length ? productNumbers.length : undefined,
       recordedOnly: recordedOnly ? `初回のため ${recordedOnly} 件は記録だけしました（通知なし）` : undefined,
       results,
     });
