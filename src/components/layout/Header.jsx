@@ -1,4 +1,4 @@
-import { Menu, Bell, Search, MoreHorizontal, Plus } from "lucide-react";
+import { Menu, Search, Plus } from "lucide-react";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { SalesProgressBand } from "@/components/SalesProgressBand";
 
@@ -89,7 +89,6 @@ export const Header = ({
           >
             設置業者
           </button>
-          <MoreHorizontal className="h-4 w-4 text-white/70 hover:text-white cursor-pointer" />
         </nav>
       </div>
 
@@ -115,10 +114,7 @@ export const Header = ({
         >
           <Search className="h-5 w-5" />
         </button>
-        <div className="relative">
-          <Bell className="h-5 w-5 text-white/80 cursor-pointer" />
-          <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-[#ffd21f] ring-2 ring-ankan"></span>
-        </div>
+        {onNewProjectClick && (
         <button
           onClick={onNewProjectClick}
           className="bg-gray-900 hover:bg-black text-white px-3 lg:px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 shadow-[0_3px_0_var(--color-ankan-dark)] active:translate-y-[2px] active:shadow-[0_1px_0_var(--color-ankan-dark)] transition-transform"
@@ -126,6 +122,7 @@ export const Header = ({
           <Plus className="h-4 w-4" />
           <span className="hidden sm:inline">新規</span>
         </button>
+        )}
       </div>
     </header>
     <SalesProgressBand />

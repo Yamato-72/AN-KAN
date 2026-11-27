@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Building, Phone, Mail, User, Plus, Search, Edit } from "lucide-react";
+import { Building, Phone, Mail, User, Search, Edit } from "lucide-react";
 import { Header } from "@/components/layout/Header";
 import { MobileMenu } from "@/components/layout/MobileMenu";
 import { MobileSearch } from "@/components/layout/MobileSearch";
@@ -62,10 +62,6 @@ export default function ClientsPage() {
     setFilteredClients(filtered);
   }, [searchQuery, clients]);
 
-  const handleNewClient = () => {
-    // TODO: 新規クライアント作成モーダルを開く
-    alert("新規クライアント作成機能は後で実装予定です");
-  };
 
   // 編集モーダルを開く
   const handleEditClient = (client) => {
@@ -90,7 +86,6 @@ export default function ClientsPage() {
         <Header
           onMobileMenuClick={() => setShowMobileMenu(true)}
           onMobileSearchToggle={() => setShowMobileSearch(!showMobileSearch)}
-          onNewProjectClick={handleNewClient}
           searchQuery={searchQuery}
           onSearchQueryChange={setSearchQuery}
           searchPlaceholder="クライアントを検索..."
@@ -108,7 +103,6 @@ export default function ClientsPage() {
         <Header
           onMobileMenuClick={() => setShowMobileMenu(true)}
           onMobileSearchToggle={() => setShowMobileSearch(!showMobileSearch)}
-          onNewProjectClick={handleNewClient}
           searchQuery={searchQuery}
           onSearchQueryChange={setSearchQuery}
           searchPlaceholder="クライアントを検索..."
@@ -125,7 +119,6 @@ export default function ClientsPage() {
       <Header
         onMobileMenuClick={() => setShowMobileMenu(true)}
         onMobileSearchToggle={() => setShowMobileSearch(!showMobileSearch)}
-        onNewProjectClick={handleNewClient}
         searchQuery={searchQuery}
         onSearchQueryChange={setSearchQuery}
         searchPlaceholder="クライアントを検索..."
@@ -175,13 +168,6 @@ export default function ClientsPage() {
                   </span>
                 )}
               </div>
-              <button
-                onClick={handleNewClient}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium flex items-center gap-2"
-              >
-                <Plus className="h-4 w-4" />
-                新規クライアント
-              </button>
             </div>
           </div>
 
@@ -272,15 +258,6 @@ export default function ClientsPage() {
                   ? "検索条件を変更してお試しください"
                   : "新しいクライアントを登録してください"}
               </p>
-              {!searchQuery && (
-                <button
-                  onClick={handleNewClient}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium flex items-center gap-2 mx-auto"
-                >
-                  <Plus className="h-4 w-4" />
-                  新規クライアント
-                </button>
-              )}
             </div>
           )}
         </div>
