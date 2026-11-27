@@ -5,7 +5,7 @@ import { getSessionFromRequest } from "@/lib/authz";
 // 見張りから外す／戻す（見張りのカードの「見張りから外す」ボタンから開く）
 //   GET ?id=案件ID           … 外す
 //   GET ?id=案件ID&undo=1    … 戻す
-//   ログインした人だけ。結果は小さなページで返す
+//   和田・梶原のみ（WATCH_ADMINS）。結果は小さなページで返す
 //   （/api/watch は門番の対象外なので、ここで自分でログインを確かめる）
 // ============================================================
 function page(title, body) {
@@ -20,10 +20,20 @@ a{display:inline-block;padding:9px 16px;border-radius:10px;background:#161616;co
   );
 }
 
+// 外す・戻すを押せる人（和田・梶原のみ）。Cloud Run の WATCH_ADMINS（カンマ区切りのメール）で上書きできる
+const DEFAULT_ALLOWED = ["toshihiro.wada8010@yamato-signage.com"];
+function allowedEmails() {
+  const env = (process.env.WATCH_ADMINS || "").split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
+  return env.length ? env : DEFAULT_ALLOWED;
+}
+
 export async function GET(request) {
   const session = await getSessionFromRequest(request);
   if (!session) {
     return page("ログインしてください", `<p>AN-KANにログインしてから、もう一度ボタンを押してください。</p><a href="/login">ログインへ</a>`);
+  }
+  if (!allowedEmails().includes(String(session.email || "").toLowerCase())) {
+    return page("この操作はできません", "<p>見張りから外せるのは、和田さんと梶原さんだけです。</p>");
   }
   const url = new URL(request.url);
   const id = parseInt(url.searchParams.get("id"), 10);
