@@ -1,3 +1,4 @@
+import { findProjectSpace, postToSpace } from "@/app/api/utils/googleChat";
 import { addPendingOrder } from "@/app/api/utils/salesSheet";
 import { linkTicketToAdSpace, syncTsInfoToSheet } from "@/app/api/utils/ticketSpace";
 import { query } from "@/lib/db";
@@ -443,6 +444,18 @@ export async function POST(request) {
         if (r.added) {
           await query(`INSERT INTO project_activities (project_id, activity_type, description) VALUES ($1, $2, $3)`,
             [project.id, "pending_order", "支払ナビの「これから発注」に番号を渡しました"]);
+        }
+      } catch (e) {
+        console.error("発注待ちへの書き込みに失敗:", e.message);
+      }
+      // 「SP 在庫発注」スペースにも知らせる
+      try {
+        const { space } = await findProjectSpace("SP", project.ad_number);
+        if (space) {
+          const label = formatProjectNumber("SP", project.ad_number);
+          const base = process.env.ANKAN_PROJECT_URL_BASE;
+          const link = base ? `\n${base.replace(/\/$/, "")}/${project.id}` : "";
+          await postToSpace(space.name, `📦 ${label}「${project_name}」を作りました。支払ナビの「これから発注」に出ています${link}`);
         }
       } catch (e) {
         console.error("発注待ちへの書き込みに失敗:", e.message);
