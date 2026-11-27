@@ -96,7 +96,14 @@ export async function rememberProjectSpace(prefix, number, space) {
   `;
 }
 
+// SP（在庫のまとめ買い）の知らせは、番号ごとではなく共有スペース1つにまとめる
+const SP_SPACE_NAME = process.env.SP_SPACE_NAME || "SP 在庫発注";
+
 export async function findProjectSpace(prefix, number) {
+  if (String(prefix).toUpperCase() === "SP") {
+    const shared = await findSpaceByName(SP_SPACE_NAME).catch(() => null);
+    if (shared) return { space: shared, count: 1 };
+  }
   try {
     await ensureSpaceTable();
     const rows = await sql`SELECT space_name, display_name FROM project_spaces WHERE prefix = ${prefix} AND number = ${parseInt(number, 10)}`;
@@ -234,6 +241,8 @@ export async function createProjectSpace({ label, projectName, driveLink }) {
 // 受注済みになった案件に、スペースがまだ無ければ作る（あれば何もしない）
 export async function ensureProjectSpace(project) {
   const prefix = project.prefix || "AD";
+  // SPは在庫なので案件スペースを作らない（知らせは「SP 在庫発注」スペースへ）
+  if (String(prefix).toUpperCase() === "SP") return { created: false, skipped: "SP" };
   const { space } = await findProjectSpace(prefix, project.ad_number);
   if (space) return { created: false, space };
   // AN-KANアプリが入っていない、手で作ったスペースも探す（和田さんが入っているもの）
