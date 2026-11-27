@@ -1,3 +1,4 @@
+import { StockStateText } from "@/components/projects/StockState";
 import { formatProjectNumber } from "@/lib/prefixes";
 import {
   FileText,
@@ -226,6 +227,7 @@ export const ProjectList = ({
                       >
                         {getStatusText(project.status)}
                       </span>
+                      <StockStateText project={project} />
                     </td>
 
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">

@@ -7,6 +7,7 @@ import { NewProjectModal } from "@/components/projects/NewProjectModal";
 import { ProjectLogs } from "@/components/projects/ProjectLogs";
 import { ProjectPayments } from "@/components/projects/ProjectPayments";
 import { ProjectDepositStatus } from "@/components/projects/ProjectDepositStatus";
+import { StockStateFlow } from "@/components/projects/StockState";
 import { ProjectStockLinks } from "@/components/projects/ProjectStockLinks";
 import { ProjectBreadcrumbs } from "@/components/projects/ProjectBreadcrumbs";
 import { ProjectDetailHeader } from "@/components/projects/ProjectDetailHeader";
@@ -271,6 +272,9 @@ const handleToggleLost = async () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* ヘッダー部分 */}
         <ProjectDetailHeader project={project} onBack={handleBack} onUpdated={refetch} />
+
+        {/* 物の状態（在庫ナビ・支払ナビから自動） */}
+        <StockStateFlow project={project} />
 
         {/* アクションボタン（上部に配置・スクロール不要でどのタブでも表示） */}
         <div className="mb-6">
