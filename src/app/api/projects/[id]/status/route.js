@@ -1,6 +1,5 @@
 import sql from "@/app/api/utils/sql";
 import { requireEditPermission } from "@/lib/authz";
-import { sendOrderAlert } from "@/app/api/utils/mailer";
 import { ensureProjectSpace } from "@/app/api/utils/googleChat";
 
 // ステータスの順序（画面の進捗バー STATUS_STEPS と完全一致させる）
@@ -306,29 +305,7 @@ export async function PUT(request, { params }) {
       }
     }
 
-    // === 受注アラート（初回の「受注済み」到達時のみ、調達グループへメール）===
-    //   - order_alert_sent が false のときだけ送る（二重通知を防ぐ）
-    //   - 送信可否に関わらずステータス更新は成立させる（メール失敗で業務を止めない）
-    if (newStatus === "受注済み" && project[0].order_alert_sent === false) {
-      try {
-        const sent = await sendOrderAlert(
-          {
-            id: updatedProject[0].id,
-            prefix: updatedProject[0].prefix,
-            ad_number: updatedProject[0].ad_number,
-            project_name: updatedProject[0].project_name,
-            resolved_client_name: project[0].resolved_client_name,
-          },
-          body.actor || null,
-        );
-        if (sent) {
-          await sql`UPDATE projects SET order_alert_sent = true WHERE id = ${id}`;
-        }
-      } catch (mailErr) {
-        console.error("[order-alert] 予期せぬエラー:", mailErr);
-        // 握りつぶす（ステータス更新は成功として返す）
-      }
-    }
+    // 受注アラートのメールは廃止（2026-11-27）。受注済みの知らせは上の案件スペース作成で代わりにする
 
     // 残金請求済に変更された場合は特別なメッセージ
     let responseMessage = `ステータスが「${newStatus}」に更新されました`;
