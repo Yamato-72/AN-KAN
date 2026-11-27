@@ -1,3 +1,4 @@
+import { getDelegateToken, getSecret } from "@/app/api/utils/chatDelegate";
 import { createSign } from "crypto";
 
 // ============================================================
@@ -132,7 +133,54 @@ function spaceMembers() {
   return env.length ? env : DEFAULT_MEMBERS;
 }
 
+// 許可した人（和田さん）の代わりにスペースを作る。代行の許可が無ければ null を返す
+async function createSpaceAsDelegate({ displayName, driveLink }) {
+  const token = await getDelegateToken();
+  if (!token) return null;
+  const me = ((await getSecret("chat_delegate_email")) || "").toLowerCase();
+  const members = spaceMembers().filter((e) => e.toLowerCase() !== me);
+  const res = await fetch("https://chat.googleapis.com/v1/spaces:setup", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json; charset=UTF-8" },
+    body: JSON.stringify({
+      space: {
+        spaceType: "SPACE",
+        displayName,
+        spaceDetails: driveLink ? { description: `Driveフォルダ：${driveLink}`.slice(0, 150) } : undefined,
+      },
+      memberships: [],
+    }),
+  });
+  if (!res.ok) throw new Error(`スペースの作成に失敗（代行）: ${res.status} ${(await res.text()).slice(0, 300)}`);
+  const space = await res.json();
+
+  // AN-KANアプリを入れる（入れないと通知が届かない）
+  const failed = [];
+  const appRes = await fetch(`https://chat.googleapis.com/v1/${space.name}/members`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json; charset=UTF-8" },
+    body: JSON.stringify({ member: { name: "users/app", type: "BOT" } }),
+  });
+  if (!appRes.ok) failed.push(`AN-KANアプリ（${appRes.status}）`);
+
+  for (const email of members) {
+    const r = await fetch(`https://chat.googleapis.com/v1/${space.name}/members`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json; charset=UTF-8" },
+      body: JSON.stringify({ member: { name: `users/${email}`, type: "HUMAN" } }),
+    });
+    if (!r.ok) failed.push(`${email}（${r.status}）`);
+  }
+  return { space, failed, appJoined: appRes.ok };
+}
+
 export async function createProjectSpace({ label, projectName, driveLink }) {
+  const displayNameD = `${label}/${projectName || ""}`.slice(0, 128);
+  const viaDelegate = await createSpaceAsDelegate({ displayName: displayNameD, driveLink });
+  if (viaDelegate) {
+    clearSpaceCache();
+    return { ...viaDelegate, displayName: displayNameD };
+  }
   const token = await getServiceToken(SPACE_SCOPES);
   // 名前は128文字まで
   const displayName = `${label}/${projectName || ""}`.slice(0, 128);
