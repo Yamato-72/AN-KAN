@@ -1,6 +1,7 @@
 import sql from "@/app/api/utils/sql";
 import { requireEditPermission } from "@/lib/authz";
 import { sendOrderAlert } from "@/app/api/utils/mailer";
+import { ensureProjectSpace } from "@/app/api/utils/googleChat";
 
 // ステータスの順序（画面の進捗バー STATUS_STEPS と完全一致させる）
 //   ここに「リード」が無いと、進捗バーの番号とサーバの番号が1つズレて、
@@ -288,6 +289,22 @@ export async function PUT(request, { params }) {
       INSERT INTO project_activities (project_id, activity_type, description)
       VALUES (${id}, 'status_update', ${activityDescription})
     `;
+
+    // === 案件のChatスペースを自動で作る（受注済みになったとき・まだ無ければ）===
+    //   失敗しても（管理者の承認前など）ステータス更新は成立させる
+    if (newStatus === "受注済み") {
+      try {
+        const r = await ensureProjectSpace(updatedProject[0]);
+        if (r.created) {
+          await sql`
+            INSERT INTO project_activities (project_id, activity_type, description)
+            VALUES (${id}, 'chat_space_created', ${"Chatスペースを自動で作りました" + (r.failed?.length ? `（追加できなかったメンバー：${r.failed.join("、")}）` : "")})
+          `;
+        }
+      } catch (e) {
+        console.error("Chatスペースの自動作成に失敗:", e.message);
+      }
+    }
 
     // === 受注アラート（初回の「受注済み」到達時のみ、調達グループへメール）===
     //   - order_alert_sent が false のときだけ送る（二重通知を防ぐ）

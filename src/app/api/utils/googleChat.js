@@ -104,3 +104,78 @@ export async function postToSpace(spaceName, text) {
 export function clearSpaceCache() {
   spaceCache = { list: null, exp: 0 };
 }
+
+// ============================================================
+// 案件のスペースを自動で作る（受注済みになったとき）
+//   - スペース名：「AD-1877/プロジェクト名」
+//   - AN-KANアプリ自身がメンバーになるので、作った直後から通知が届く
+//   - 必要な権限：chat.app.spaces.create / chat.app.memberships（Workspace管理者の一度だけの承認）
+//   - 承認前や失敗しても、ステータス更新は止めない（呼び出し側で握りつぶす）
+// ============================================================
+const SPACE_SCOPES =
+  "https://www.googleapis.com/auth/chat.app.spaces.create https://www.googleapis.com/auth/chat.app.memberships";
+
+// 毎回入れるメンバー（Cloud Run の CHAT_SPACE_MEMBERS で上書きできる。カンマ区切り）
+const DEFAULT_MEMBERS = [
+  "toshihiro.wada8010@yamato-signage.com",
+  "erina.yoshioka8010@yamato-signage.com",
+  "operation8010@yamato-signage.com",
+  "shoji.ohyama8010@yamato-signage.com",
+  "miki.sakashita8010@yamato-signage.com",
+  "management-team8010@yamato-signage.com",
+];
+function spaceMembers() {
+  const env = (process.env.CHAT_SPACE_MEMBERS || "").split(",").map((s) => s.trim()).filter(Boolean);
+  return env.length ? env : DEFAULT_MEMBERS;
+}
+
+export async function createProjectSpace({ label, projectName, driveLink }) {
+  const token = await getServiceToken(SPACE_SCOPES);
+  // 名前は128文字まで
+  const displayName = `${label}/${projectName || ""}`.slice(0, 128);
+  const res = await fetch("https://chat.googleapis.com/v1/spaces", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json; charset=UTF-8" },
+    body: JSON.stringify({
+      spaceType: "SPACE",
+      displayName,
+      customer: "customers/my_customer",
+      spaceDetails: driveLink ? { description: `Driveフォルダ：${driveLink}`.slice(0, 150) } : undefined,
+    }),
+  });
+  if (!res.ok) throw new Error(`スペースの作成に失敗: ${res.status} ${(await res.text()).slice(0, 300)}`);
+  const space = await res.json();
+
+  // メンバーを1人ずつ追加（失敗した人は記録して、あとでスペースに書く）
+  const failed = [];
+  for (const email of spaceMembers()) {
+    const r = await fetch(`https://chat.googleapis.com/v1/${space.name}/members`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json; charset=UTF-8" },
+      body: JSON.stringify({ member: { name: `users/${email}`, type: "HUMAN" } }),
+    });
+    if (!r.ok) failed.push(`${email}（${r.status}）`);
+  }
+  clearSpaceCache();
+  return { space, displayName, failed };
+}
+
+// 受注済みになった案件に、スペースがまだ無ければ作る（あれば何もしない）
+export async function ensureProjectSpace(project) {
+  const prefix = project.prefix || "AD";
+  const { space } = await findProjectSpace(prefix, project.ad_number);
+  if (space) return { created: false, space };
+  const label = `${prefix}-${String(project.ad_number)}`;
+  const { space: made, displayName, failed } = await createProjectSpace({
+    label,
+    projectName: project.project_name,
+    driveLink: project.drive_folder_link || (project.drive_folder_id ? `https://drive.google.com/drive/folders/${project.drive_folder_id}` : ""),
+  });
+  const lines = [
+    `「${displayName}」のスペースを、受注にあわせてAN-KANが作りました。`,
+    "入荷予定日の変更・図面・PL/CIなどの知らせは、ここに届きます。",
+  ];
+  if (failed.length) lines.push(`※ 次のメンバーは自動で追加できませんでした。手で追加してください：${failed.join("、")}`);
+  try { await postToSpace(made.name, lines.join("\n")); } catch (e) { console.error(e); }
+  return { created: true, space: made, failed };
+}
