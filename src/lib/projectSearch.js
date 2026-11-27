@@ -4,7 +4,7 @@
 //       「AD-1840」「ad1840」「1840」「ＡＤ１８４０」→ どれでも当たる
 //   - スペースで区切ると「すべて含む」（例：「大阪 LED」）
 //   - 見る項目：案件番号、プロジェクト名、顧客名、担当者、設置場所・住所、
-//               品番、備考、顧客の担当者・住所、設置業者、ステータス
+//               品番、シリアル（支払ナビのYS番号）、備考、顧客の担当者・住所、設置業者、ステータス
 // ============================================================
 import { formatProjectNumber } from "@/lib/prefixes";
 
@@ -26,6 +26,7 @@ function haystack(p) {
       p.location,
       p.address,
       p.product_number,
+      (p.serials || []).join(" "),
       p.remarks,
       p.contact_person,
       p.company_address,

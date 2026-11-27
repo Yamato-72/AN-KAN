@@ -1,5 +1,5 @@
 import sql from "@/app/api/utils/sql";
-import { normalizeProjectNumber, readDataRanges } from "@/app/api/utils/salesSheet";
+import { normalizeProjectNumber } from "@/app/api/utils/salesSheet";
 import { loadStock } from "@/app/api/utils/stockState";
 
 // ============================================================
@@ -76,38 +76,3 @@ export async function autoAdvanceSp({ dry = false } = {}) {
   return moved;
 }
 
-// ============================================================
-// 支払ナビで付いた製品番号（YS番号）を、AN-KANの「製品番号」欄に返す（2026-11-27）
-//   - 支払ナビの案件シート H列（Serial：YS0554 / YS0518(1-5) など）を、案件番号ごとに集める
-//   - AN-KANの欄が空なら入れる。手で書いた内容があれば消さずに、足りない番号だけ後ろに足す
-// ============================================================
-export async function syncProductNumbers({ dry = false } = {}) {
-  const [orders] = await readDataRanges(["案件!A2:H"]);
-  const byKey = {};
-  orders.forEach((r) => {
-    const p1 = String(r[1] || "");
-    const key = normalizeProjectNumber(/^[A-Z]+-\d+$/i.test(p1) ? p1 : `${(p1 || "AD").replace(/-$/, "")}-${r[2] || ""}`);
-    const serial = String(r[7] || "").trim();
-    if (!key || !serial || serial === "[]") return;
-    (byKey[key] ||= []).push(serial);
-  });
-  const projects = await sql`SELECT id, prefix, ad_number, product_number FROM projects WHERE ad_number IS NOT NULL`;
-  const changed = [];
-  for (const p of projects) {
-    const key = normalizeProjectNumber(`${p.prefix || "AD"}-${p.ad_number}`);
-    const serials = [...new Set(byKey[key] || [])];
-    if (!serials.length) continue;
-    const cur = String(p.product_number || "").trim();
-    const missing = serials.filter((s) => !cur.includes(s));
-    if (!missing.length) continue;
-    const next = cur ? `${cur}、${missing.join("、")}` : missing.join("、");
-    changed.push({ id: p.id, key, from: cur, to: next });
-    if (dry) continue;
-    await sql`UPDATE projects SET product_number = ${next}, updated_at = NOW() WHERE id = ${p.id}`;
-    await sql`
-      INSERT INTO project_activities (project_id, activity_type, description)
-      VALUES (${p.id}, 'product_number_synced', ${`支払ナビで付いた製品番号を入れました：${missing.join("、")}`})
-    `;
-  }
-  return changed;
-}

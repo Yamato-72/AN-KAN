@@ -11,6 +11,7 @@ import {
   AlertTriangle,
   User,
   Package,
+  Hash,
 } from "lucide-react";
 import { StatusProgressBar } from "@/components/StatusProgressBar";
 import { getStatusColor, getStatusIcon, getStatusText } from "@/utils/status";
@@ -202,6 +203,12 @@ export const ProjectCard = ({
               </div>
             )}
             <StockLine project={project} />
+            {project.serials?.length > 0 && (
+              <div className="flex items-center gap-2 text-sm text-gray-600" title="支払ナビで付いたシリアル">
+                <Hash className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                <span className="truncate font-mono text-[13px]">{project.serials.join("　")}</span>
+              </div>
+            )}
             {project.location && (
               <div className="flex items-center gap-2 text-sm text-gray-600">
                 <MapPin className="h-4 w-4 text-gray-400 flex-shrink-0" />

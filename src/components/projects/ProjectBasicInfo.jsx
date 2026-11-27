@@ -9,6 +9,7 @@ import {
   Clock,
   MapPin,
   Tag, // Add Tag icon for product number
+  Hash, // シリアル
   Link2, // 関連元案件のリンク用
 } from "lucide-react";
 import { formatDate, formatDateTime } from "@/utils/dateFormatters";
@@ -155,6 +156,17 @@ export function ProjectBasicInfo({ project }) {
             </label>
             <p className="text-gray-900 whitespace-pre-wrap">
               {project.product_number || "未設定"}
+            </p>
+          </div>
+
+          <div className="md:col-span-2">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              <Hash size={16} className="inline mr-2" />
+              シリアル
+              <span className="ml-2 text-xs font-normal text-gray-400">支払ナビで発注を登録すると自動で入ります</span>
+            </label>
+            <p className="text-gray-900 font-mono text-sm">
+              {project.serials?.length ? project.serials.join("　") : <span className="font-sans text-gray-400">まだありません</span>}
             </p>
           </div>
 

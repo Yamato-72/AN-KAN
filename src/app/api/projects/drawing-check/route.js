@@ -1,5 +1,5 @@
 import sql from "@/app/api/utils/sql";
-import { autoAdvanceToArranging, autoAdvanceSp, syncProductNumbers } from "@/app/api/utils/autoArrange";
+import { autoAdvanceToArranging, autoAdvanceSp } from "@/app/api/utils/autoArrange";
 import { findProjectSpace, postToSpace, getServiceToken } from "@/app/api/utils/googleChat";
 import { formatProjectNumber } from "@/lib/prefixes";
 
@@ -116,13 +116,8 @@ async function run(request) {
     } catch (e) {
       console.error("SPの自動切り替えに失敗:", e.message);
     }
-    // 0c) 支払ナビで付いた製品番号（YS番号）をAN-KANへ返す
-    let productNumbers = [];
-    try {
-      productNumbers = await syncProductNumbers({ dry: true }); // いったん確認のみ（製品番号欄は型式に使われているため、書き込みは止めている）
-    } catch (e) {
-      console.error("製品番号の取り込みに失敗:", e.message);
-    }
+    // （シリアルは表示のたびに支払ナビのシートから読むので、ここでは何もしない）
+    const productNumbers = [];
 
     // 1) 案件フォルダの一覧（フォルダID → 案件）
     //    AN-KANが作ったフォルダ（drive_folder_id）に加えて、

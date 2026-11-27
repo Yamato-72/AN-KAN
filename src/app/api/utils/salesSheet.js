@@ -195,7 +195,38 @@ export async function getSalesMap() {
 //   revenue        … 表示に使う売上
 //   revenue_source … "sheet"（支払ナビ）/ "import"（過去の取り込み値）/ null
 //   sales_date     … 売上の日付（納品日）。期の判定に使う
+// 支払ナビで付いたシリアル（YS0554 / YS0518(1-5) など）を案件番号ごとに集める（5分覚えておく）
+//   支払ナビの案件シート H列。AN-KANには保存せず、表示のたびにシートから読む
+let serialCache = { at: 0, value: null };
+export async function getSerialMap() {
+  if (serialCache.value && Date.now() - serialCache.at < 5 * 60 * 1000) return serialCache.value;
+  const [orders] = await readDataRanges(["案件!A2:H"]);
+  const map = {};
+  orders.forEach((r) => {
+    const p1 = String(r[1] || "");
+    const key = normalizeProjectNumber(/^[A-Z]+-\d+$/i.test(p1) ? p1 : `${(p1 || "AD").replace(/-$/, "")}-${r[2] || ""}`);
+    const serial = String(r[7] || "").trim();
+    if (!key || !serial || serial === "[]") return;
+    (map[key] ||= []);
+    if (!map[key].includes(serial)) map[key].push(serial);
+  });
+  serialCache = { at: Date.now(), value: map };
+  return map;
+}
+
 export async function overlaySales(projects) {
+  let serials = null;
+  try {
+    serials = await getSerialMap();
+  } catch (e) {
+    console.error("シリアルを読めませんでした:", e.message);
+  }
+  if (serials) {
+    projects = projects.map((p) => {
+      const list = serials[normalizeProjectNumber(`${p.prefix || "AD"}-${p.ad_number}`)];
+      return list ? { ...p, serials: list } : p;
+    });
+  }
   let map = null;
   try {
     map = await getSalesMap();
