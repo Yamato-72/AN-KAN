@@ -11,9 +11,7 @@ import {
   Tooltip,
   Bar,
 } from "recharts";
-import { ArrowLeft, TrendingUp, Users, Building, CalendarRange, X, ChevronRight } from "lucide-react";
-import { formatProjectNumber } from "@/lib/prefixes";
-import { getStatusText } from "@/utils/status";
+import { ArrowLeft, TrendingUp, Users, Building, CalendarRange, ChevronRight } from "lucide-react";
 
 // ============================================================
 // 経営分析ページ（/analytics）
@@ -22,51 +20,10 @@ import { getStatusText } from "@/utils/status";
 //   - 売上は /api/projects が支払ナビのシートを重ねて返す（AN-KANの写しは使わない）
 // ============================================================
 
-const FY_BASE_YEAR = 2019; // 1期 = 2019年7月〜
-
-// 案件の期を判定（納期 → 問い合わせ日 → 作成日）
-const periodOf = (p) => {
-  const dateStr = p.sales_date || p.delivery_date || p.inquiry_date || p.created_at; // 売上の納品日（支払ナビ）を最優先
-  if (!dateStr) return null;
-  const d = new Date(dateStr);
-  if (isNaN(d)) return null;
-  const fyStartYear = d.getMonth() >= 6 ? d.getFullYear() : d.getFullYear() - 1;
-  return fyStartYear - FY_BASE_YEAR + 1;
-};
-
-// 会計月インデックス（7月=0 … 6月=11）と表示名
-const fiscalMonthOf = (p) => {
-  const dateStr = p.sales_date || p.delivery_date || p.inquiry_date || p.created_at; // 売上の納品日（支払ナビ）を最優先
-  if (!dateStr) return null;
-  const d = new Date(dateStr);
-  if (isNaN(d)) return null;
-  return (d.getMonth() + 6) % 12;
-};
-const FISCAL_MONTH_LABELS = ["7月","8月","9月","10月","11月","12月","1月","2月","3月","4月","5月","6月"];
-
-// 案件の段階（売上分析での呼び方）
-//   商談中＝リード・打ち合わせ中（まだ受注していない）
-//   仕掛り＝受注済み・手配中（受注したが、まだ完了していない）
-//   完了　＝残金請求済
-//   トラブル対応＝TS（修理・トラブル対応。営業の件数には入れず別枠で数える）
-//   SP（在庫の発注）は売上ではないので、売上分析には入れない
-const prefixOf = (p) => String(p.prefix || "AD").toUpperCase();
-const stageOf = (p) => {
-  if (prefixOf(p) === "TS") return "トラブル対応";
-  if (p.status === "残金請求済") return "完了";
-  if (p.status === "リード" || p.status === "打ち合わせ中") return "商談中";
-  return "仕掛り";
-};
-const STAGES = ["完了", "仕掛り", "商談中", "トラブル対応"];
-const isOrdered = (p) => p._stage === "完了" || p._stage === "仕掛り"; // 営業で受注した案件
-
-const yen = (n) => "¥" + Math.round(n).toLocaleString();
-const man = (n) => {
-  const v = Math.round(n);
-  if (Math.abs(v) >= 100000000) return "¥" + (Math.round(v / 1000000) / 100).toLocaleString() + "億";
-  if (Math.abs(v) >= 10000) return "¥" + Math.round(v / 10000).toLocaleString() + "万";
-  return "¥" + v.toLocaleString();
-};
+import {
+  FISCAL_MONTH_LABELS, STAGES, isOrdered, yen, man, prepareSales, staffOf,
+} from "@/lib/salesAnalytics";
+import { StaffSalesPanel } from "@/components/analytics/StaffSalesPanel";
 
 export default function AnalyticsPage() {
   const params = useParams();
@@ -74,7 +31,6 @@ export default function AnalyticsPage() {
   const [loading, setLoading] = useState(true);
   const [periodFilter, setPeriodFilter] = useState(null); // 対象期（null=最新期を自動選択）
   const [staffOpen, setStaffOpen] = useState(null); // 名前を押した担当者（その人の数字と案件一覧を出す）
-  const [staffSort, setStaffSort] = useState("rev"); // rev=売上順 / date=新しい順
 
   useEffect(() => {
     fetch("/api/projects?folder=active")
@@ -85,19 +41,7 @@ export default function AnalyticsPage() {
   }, []);
 
   // 売上を持つ案件だけ（分析の対象）。期も付与
-  const revProjects = useMemo(
-    () =>
-      projects
-        .map((p) => ({
-          ...p,
-          _period: periodOf(p),
-          _rev: Number(p.revenue ?? 0) || 0,
-          _fm: fiscalMonthOf(p),
-          _stage: stageOf(p),
-        }))
-        .filter((p) => p._period && p._period > 0 && prefixOf(p) !== "SP"),
-    [projects],
-  );
+  const revProjects = useMemo(() => prepareSales(projects), [projects]);
 
   // データに実在する期（昇順）
   const availablePeriods = useMemo(() => {
@@ -177,29 +121,6 @@ export default function AnalyticsPage() {
   }, [scoped]);
 
   // 担当者を押したとき：その人の案件（選択期）
-  const staffOf = (p) => p.assigned_team_member_name || "担当者なし";
-  const staffProjects = useMemo(() => {
-    if (!staffOpen) return [];
-    const dateOf = (p) => p.sales_date || p.delivery_date || p.inquiry_date || p.created_at || "";
-    return scoped
-      .filter((p) => staffOf(p) === staffOpen)
-      .sort((a, b) =>
-        staffSort === "rev" ? b._rev - a._rev : String(dateOf(b)).localeCompare(String(dateOf(a))),
-      );
-  }, [scoped, staffOpen, staffSort]);
-  const staffTotal = staffProjects.reduce((a, p) => a + p._rev, 0);
-  const staffPaid = staffProjects.filter((p) => p._rev > 0).length;
-  const staffOrdered = staffProjects.filter(isOrdered).length;
-  const staffTs = staffProjects.filter((p) => p._stage === "トラブル対応");
-  const staffSalesPaid = staffProjects.filter((p) => isOrdered(p) && p._rev > 0);
-  const staffClients = new Set(staffProjects.map((p) => p.client_name).filter(Boolean)).size;
-  useEffect(() => {
-    if (!staffOpen) return;
-    const onKey = (e) => e.key === "Escape" && setStaffOpen(null);
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [staffOpen]);
-
   const scopedTotal = scoped.reduce((a, p) => a + p._rev, 0);
   const stageCount = (list, st) => list.filter((p) => p._stage === st).length;
   const scopedOrdered = scoped.filter(isOrdered).length;
@@ -406,78 +327,14 @@ export default function AnalyticsPage() {
       </div>
       {/* 担当者の案件一覧（右から出るパネル） */}
       {staffOpen && (
-        <div className="fixed inset-0 z-50 flex justify-end" role="dialog" aria-modal="true" aria-label={`${staffOpen}の案件`}>
-          <div className="absolute inset-0 bg-black/30 animate-[fadeIn_.2s_ease]" onClick={() => setStaffOpen(null)} />
-          <div className="relative h-full w-full max-w-md bg-white shadow-2xl flex flex-col animate-[slideIn_.28s_cubic-bezier(.2,.8,.2,1)]">
-            <div className="px-5 pt-5 pb-4 border-b border-gray-100">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-xs text-gray-400">{scopeLabel}・担当者</p>
-                  <h3 className="text-lg font-bold text-gray-900">{staffOpen}</h3>
-                </div>
-                <button type="button" onClick={() => setStaffOpen(null)} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100" title="閉じる（Esc）">
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
-              <div className="grid grid-cols-3 gap-2 mt-4">
-                <div className="bg-emerald-50 rounded-lg p-2.5">
-                  <p className="text-[11px] text-emerald-700">売上</p>
-                  <p className="text-base font-bold text-gray-900 tabular-nums">{man(staffTotal)}</p>
-                  <p className="text-[11px] text-gray-500 tabular-nums">全体の{scopedTotal ? Math.round((staffTotal / scopedTotal) * 100) : 0}%</p>
-                </div>
-                <div className="bg-gray-50 rounded-lg p-2.5">
-                  <p className="text-[11px] text-gray-500">受注件数</p>
-                  <p className="text-base font-bold text-gray-900 tabular-nums">{staffOrdered}件</p>
-                  <p className="text-[11px] text-gray-500 tabular-nums">商談中 {stageCount(staffProjects, "商談中")}・TS {staffTs.length}</p>
-                </div>
-                <div className="bg-gray-50 rounded-lg p-2.5">
-                  <p className="text-[11px] text-gray-500">平均単価</p>
-                  <p className="text-base font-bold text-gray-900 tabular-nums">{staffSalesPaid.length ? man(staffSalesPaid.reduce((a, p) => a + p._rev, 0) / staffSalesPaid.length) : "-"}</p>
-                  <p className="text-[11px] text-gray-500">営業の案件で</p>
-                </div>
-              </div>
-              <div className="flex gap-1 mt-4 text-xs">
-                {[["rev", "売上順"], ["date", "新しい順"]].map(([k, l]) => (
-                  <button key={k} type="button" onClick={() => setStaffSort(k)}
-                    className={`px-2.5 py-1 rounded-full transition-colors ${staffSort === k ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>
-                    {l}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="flex-1 overflow-y-auto">
-              {STAGES.map((st) => {
-                const list = staffProjects.filter((p) => p._stage === st);
-                if (!list.length) return null;
-                const sum = list.reduce((a, p) => a + p._rev, 0);
-                return (
-                  <div key={st}>
-                    <div className={`sticky top-0 z-10 flex items-center justify-between px-5 py-2 text-xs font-bold border-b border-gray-100 ${st === "完了" ? "bg-emerald-50 text-emerald-800" : st === "仕掛り" ? "bg-amber-50 text-amber-800" : st === "トラブル対応" ? "bg-orange-50 text-orange-800" : "bg-gray-50 text-gray-500"}`}>
-                      <span>{st}<span className="ml-1.5 font-normal">{list.length}件</span></span>
-                      {st !== "商談中" && <span className="tabular-nums">{man(sum)}</span>}
-                    </div>
-              {list.map((p, i) => (
-                <a key={p.id} href={`/${params.secretPath}/projects/${p.id}`} target="_blank" rel="noopener noreferrer"
-                  className="flex items-center gap-3 px-5 py-3 border-b border-gray-50 hover:bg-gray-50 transition-colors"
-                  style={{ animation: `fadeUp .3s ease both`, animationDelay: `${Math.min(i, 15) * 20}ms` }}>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[11px] text-gray-400 tabular-nums">
-                      {p.ad_number ? formatProjectNumber(p.prefix, p.ad_number) : "番号なし"}
-                      <span className="ml-2">{p.status === "残金請求済" && String(p.prefix || "").toUpperCase() !== "SP" ? "完了" : getStatusText(p.status, p.prefix)}</span>
-                    </p>
-                    <p className="text-sm font-semibold text-gray-800 truncate">{p.project_name || "（案件名なし）"}</p>
-                    <p className="text-xs text-gray-500 truncate">{p.client_name || "（取引先未設定）"}</p>
-                  </div>
-                  <p className={`text-sm font-bold tabular-nums whitespace-nowrap ${p._rev ? "text-gray-900" : "text-gray-300"}`}>{p._rev ? man(p._rev) : "¥0"}</p>
-                </a>
-              ))}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-          <style>{`@keyframes slideIn{from{transform:translateX(100%)}}@keyframes fadeIn{from{opacity:0}}@keyframes fadeUp{from{opacity:0;transform:translateY(6px)}}@media (prefers-reduced-motion:reduce){*{animation:none!important}}`}</style>
-        </div>
+        <StaffSalesPanel
+          name={staffOpen}
+          projects={scoped.filter((p) => staffOf(p) === staffOpen)}
+          scopeLabel={scopeLabel}
+          scopedTotal={scopedTotal}
+          secretPath={params.secretPath}
+          onClose={() => setStaffOpen(null)}
+        />
       )}
     </div>
   );

@@ -9,6 +9,7 @@ import { MobileMenu } from "@/components/layout/MobileMenu";
 import { MobileSearch } from "@/components/layout/MobileSearch";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { DashboardStats } from "@/components/dashboard/DashboardStats";
+import { MyPeriodStrip } from "@/components/dashboard/MyPeriodStrip";
 import { ProjectGrid } from "@/components/projects/ProjectGrid";
 import { ProjectList } from "@/components/projects/ProjectList";
 import { ViewToggle } from "@/components/projects/ViewToggle";
@@ -142,6 +143,11 @@ export default function DashboardPage({ params }) {
 
       <main className="lg:ml-16">
         <DashboardHeader userId={params.userId} />
+
+        {/* 自分の今期（ログイン中の本人が自分のダッシュボードを見ているときだけ） */}
+        <div className="px-4 lg:pl-24">
+          <MyPeriodStrip staffCode={staffCode} secretPath={params.secretPath} />
+        </div>
 
         <DashboardStats
           stats={stats}
