@@ -66,6 +66,31 @@ export default function AllProjectsPage() {
     fetchProjects();
   }, []);
 
+  // 失注・保留：押したときだけ読む（ふだんの一覧には混ぜない）。表示は1行1件の一覧
+  const isArchive = selectedFilter === "lost" || selectedFilter === "hold";
+  const [archived, setArchived] = useState({ lost: null, hold: null });
+  const [viewBeforeArchive, setViewBeforeArchive] = useState(null);
+  useEffect(() => {
+    // URLの ?filter=lost / hold で開いたとき（旧「失注・保留」ページからの転送）
+    const f = new URLSearchParams(window.location.search).get("filter");
+    if (f === "lost" || f === "hold") setSelectedFilter(f);
+  }, []);
+  useEffect(() => {
+    if (!isArchive) {
+      if (viewBeforeArchive) { setViewMode(viewBeforeArchive); setViewBeforeArchive(null); }
+      return;
+    }
+    if (!viewBeforeArchive) setViewBeforeArchive(viewMode);
+    setViewMode("list");
+    if (archived[selectedFilter]) return;
+    fetch(`/api/projects?folder=${selectedFilter}`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then((d) => setArchived((prev) => ({ ...prev, [selectedFilter]: Array.isArray(d) ? d : [] })))
+      .catch(() => setArchived((prev) => ({ ...prev, [selectedFilter]: [] })));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedFilter]);
+  const sourceProjects = isArchive ? archived[selectedFilter] || [] : projects;
+
   // 案件の「期」を計算（7月始まり・1期=2019年7月〜）
   //   判定日は 納期 → 問い合わせ日 → 作成日 の優先順
   const periodOf = (project) => {
@@ -89,12 +114,12 @@ export default function AllProjectsPage() {
   }, [projects]);
 
   const filteredProjects = useMemo(() => {
-    if (!projects || projects.length === 0) return [];
+    if (!sourceProjects || sourceProjects.length === 0) return [];
 
-    const filtered = projects.filter((project) => {
+    const filtered = sourceProjects.filter((project) => {
       let matchesFilter = false;
 
-      if (selectedFilter === "all") {
+      if (selectedFilter === "all" || isArchive) {
         matchesFilter = true;
       } else if (selectedFilter === "trouble") {
         matchesFilter = project.trouble_flag === true;
@@ -177,7 +202,7 @@ export default function AllProjectsPage() {
     });
 
     return sorted; // ← ★ これが無いと絶対に反映されない
-  }, [projects, selectedFilter, searchQuery, sortKey, sortOrder, periodFilter, showSp]);
+  }, [sourceProjects, isArchive, selectedFilter, searchQuery, sortKey, sortOrder, periodFilter, showSp]);
 
   return (
     <div className="min-h-screen bg-gray-50 font-inter">
@@ -268,7 +293,7 @@ export default function AllProjectsPage() {
           </div>
         </div>
 
-        <ProjectFilterBar selectedFilter={selectedFilter} onFilterSelect={setSelectedFilter} />
+        <ProjectFilterBar selectedFilter={selectedFilter} onFilterSelect={setSelectedFilter} showArchive />
         <div className="px-4 lg:pl-24 -mt-2 mb-4 flex justify-end">
           <SpToggle showSp={showSp} onToggle={toggleSp} count={(projects || []).filter(isSpProject).length} />
         </div>
@@ -286,7 +311,7 @@ export default function AllProjectsPage() {
           <ProjectList
             key={`${sortKey}-${sortOrder}-list`} // ✅ 念のため強制再描画（保険）
             projects={filteredProjects}
-            isLoading={isLoading}
+            isLoading={isLoading || (isArchive && !archived[selectedFilter])}
             error={error}
             onDelete={handleDeleteProject}
             showDeleteButton={true}

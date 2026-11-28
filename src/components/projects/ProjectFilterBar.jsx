@@ -12,7 +12,13 @@ export const filterOptions = [
   { key: "trouble", label: "トラブル" },
 ];
 
-export const ProjectFilterBar = ({ selectedFilter, onFilterSelect }) => {
+// 失注・保留（ふだんは一覧に出さない。押したときだけ読み込んで出す）
+export const archiveOptions = [
+  { key: "lost", label: "失注" },
+  { key: "hold", label: "保留" },
+];
+
+export const ProjectFilterBar = ({ selectedFilter, onFilterSelect, showArchive = false }) => {
   const [showMobileFilterDropdown, setShowMobileFilterDropdown] =
     useState(false);
 
@@ -38,7 +44,7 @@ export const ProjectFilterBar = ({ selectedFilter, onFilterSelect }) => {
   };
 
   const getCurrentFilterLabel = () => {
-    const currentFilter = filterOptions.find((f) => f.key === selectedFilter);
+    const currentFilter = [...filterOptions, ...archiveOptions].find((f) => f.key === selectedFilter);
     return currentFilter ? currentFilter.label : "進行中";
   };
 
@@ -80,6 +86,23 @@ export const ProjectFilterBar = ({ selectedFilter, onFilterSelect }) => {
                 )}
               </button>
             ))}
+            {showArchive && (
+              <div className="border-t border-dashed border-gray-200">
+                {archiveOptions.map((filter) => (
+                  <button
+                    key={filter.key}
+                    onClick={() => handleFilterSelect(filter.key)}
+                    className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium hover:bg-gray-50 ${
+                      selectedFilter === filter.key ? "text-gray-900 bg-gray-100" : "text-gray-400"
+                    }`}
+                  >
+                    <span className="w-4" />
+                    <span>{filter.label}</span>
+                    {selectedFilter === filter.key && <CheckCircle className="h-4 w-4 ml-auto text-gray-700" />}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -106,6 +129,24 @@ export const ProjectFilterBar = ({ selectedFilter, onFilterSelect }) => {
               {filter.label}
             </button>
           ))}
+          {showArchive && (
+            <div className="flex gap-2 pl-4 ml-1 border-l border-dashed border-gray-300">
+              {archiveOptions.map((filter) => (
+                <button
+                  key={filter.key}
+                  onClick={() => handleFilterSelect(filter.key)}
+                  className={`px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                    selectedFilter === filter.key
+                      ? "bg-gray-800 text-white border-gray-800"
+                      : "bg-transparent text-gray-400 border-dashed border-gray-300 hover:text-gray-700 hover:border-gray-400"
+                  }`}
+                  title={`${filter.label}の案件だけを見る`}
+                >
+                  {filter.label}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -4,7 +4,6 @@ import {
   Users,
   FileText,
   Wrench,
-  Flag,
   Banknote,
   Package,
   TrendingUp,
@@ -40,12 +39,6 @@ export const Sidebar = () => {
         pathname.startsWith(createSecretUrl("/all-project")) ||
         pathname.startsWith(createSecretUrl("/projects")),
       title: "プロジェクト一覧",
-    },
-      {
-      icon: Flag,
-      href: createSecretUrl("/lost-hold"),                // ★ 失注・保留ページ
-      isActive: pathname.startsWith(createSecretUrl("/lost-hold")),
-      title: "失注・保留",
     },
     {
       icon: TrendingUp,
