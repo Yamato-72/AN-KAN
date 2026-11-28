@@ -24,8 +24,17 @@ const PUBLIC_PATHS = [
   "/_next/",
 ];
 
+// 2026-11-28 サーバーをシンガポールへ移した。古いヨーロッパのURLに来た人は新しいURLへ送る
+const OLD_HOST = "an-kan-47228502594.europe-west1.run.app";
+const NEW_ORIGIN = "https://an-kan-47228502594.asia-southeast1.run.app";
+
 export async function middleware(request) {
   const { pathname } = request.nextUrl;
+
+  const host = request.headers.get("x-forwarded-host") || request.headers.get("host") || "";
+  if (host === OLD_HOST && pathname !== "/api/health") {
+    return NextResponse.redirect(NEW_ORIGIN + pathname + request.nextUrl.search, 308);
+  }
 
   // 素通し対象か？
   if (PUBLIC_PATHS.some((p) => pathname.startsWith(p))) {
