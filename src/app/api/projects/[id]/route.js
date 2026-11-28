@@ -279,6 +279,23 @@ export async function PUT(request, { params }) {
       // 空文字やnullは「紐づけ解除」としてNULLに正規化
       values.push(related_project_id ? parseInt(related_project_id) : null);
     }
+    // 担当者（コード1文字で保存。数値IDで来たらコードに直す）
+    //   ※以前はここが無く、変更の履歴だけ残って実際は保存されていなかった（2026-11-28修正）
+    if (assigned_team_member !== undefined) {
+      let code = null;
+      if (typeof assigned_team_member === "number") {
+        const st = await sql`SELECT code FROM staff_members WHERE id = ${assigned_team_member}`;
+        code = st[0]?.code || null;
+      } else if (typeof assigned_team_member === "string" && /^[A-Z]$/.test(assigned_team_member)) {
+        code = assigned_team_member;
+      }
+      // 値が読めないとき（空・不明）は「担当者なし」にせず、そのまま触らない
+      if (code || assigned_team_member === null || assigned_team_member === "") {
+        paramCount++;
+        updates.push(`assigned_team_member = $${paramCount}`);
+        values.push(code);
+      }
+    }
     if (address !== undefined) {
       paramCount++;
       updates.push(`address = $${paramCount}`);
