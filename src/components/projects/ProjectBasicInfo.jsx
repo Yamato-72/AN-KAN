@@ -152,7 +152,7 @@ export function ProjectBasicInfo({ project }) {
           <div className="md:col-span-2">
             <label className="block text-sm font-medium text-gray-700 mb-1">
               <Tag size={16} className="inline mr-2" />
-              製品番号
+              製品詳細
             </label>
             <p className="text-gray-900 whitespace-pre-wrap">
               {project.product_number || "未設定"}

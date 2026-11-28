@@ -564,7 +564,7 @@ if (
       const newProductNumber = product_number || "未設定";
       await sql`
         INSERT INTO project_activities (project_id, activity_type, description)
-        VALUES (${id}, 'product_number_update', ${`製品番号が「${oldProductNumber}」から「${newProductNumber}」に変更されました`})
+        VALUES (${id}, 'product_number_update', ${`製品詳細が「${oldProductNumber}」から「${newProductNumber}」に変更されました`})
       `;
     }
 

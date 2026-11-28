@@ -822,7 +822,7 @@ export const NewProjectModal = ({
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              製品番号
+              製品詳細
             </label>
             <textarea
               value={formData.product_number}
@@ -831,7 +831,7 @@ export const NewProjectModal = ({
               }
               rows={3}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize"
-              placeholder="製品番号、型番、仕様などを自由に入力してください"
+              placeholder="型番・サイズ・仕様など、製品の中身を自由に入力してください"
             />
             <p className="text-xs text-gray-500 mt-1">
               製品の型番や仕様を自由な形式で入力できます
