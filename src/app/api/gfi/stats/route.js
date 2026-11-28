@@ -1,6 +1,9 @@
 import sql from "@/app/api/utils/sql";
 
 export async function GET(request) {
+  // GFI様専用ダッシュボードを閉じたので、数字も返さない（2026-11-28）
+  return Response.json({ error: "このページは終了しました" }, { status: 410 });
+  // eslint-disable-next-line no-unreachable
   try {
     console.log("=== GFI Stats API Debug Start ===");
 

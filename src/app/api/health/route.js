@@ -2,7 +2,7 @@
 // 動作確認用の窓口：今どの版が動いているかを返すだけ（中身の情報は返さない）
 //   - 自動デプロイが動いているかの確認に使う（BUILD を変えて push → 数分後にここで確認）
 // ============================================================
-const BUILD = "2026-11-28 GFIフラグのボタンを外す";
+const BUILD = "2026-11-28 GFIフラグのボタンを外し、GFIページを閉じる";
 
 export async function GET() {
   return Response.json({ ok: true, build: BUILD }, { status: 200 });
