@@ -1,6 +1,6 @@
 import { addPendingOrder } from "@/app/api/utils/salesSheet";
 import sql from "@/app/api/utils/sql";
-import { requireEditPermission } from "@/lib/authz";
+import { requireEditPermission, getSessionFromRequest } from "@/lib/authz";
 import { ensureProjectSpace } from "@/app/api/utils/googleChat";
 
 // ステータスの順序（画面の進捗バー STATUS_STEPS と完全一致させる）
@@ -23,6 +23,34 @@ export async function PUT(request, { params }) {
     const { id } = params;
     const body = await request.json();
     const { action, confirm, installationData, revenue, deliveryDate } = body; // deliveryDateを追加
+
+    // === 管理者だけ：ステータスを好きな段階へ直接変える ===
+    //   過去案件の整理用。段階を飛ばしてよく、Chatスペース作成・支払ナビ連携・請求書などの処理は一切しない
+    if (action === "set") {
+      const session = await getSessionFromRequest(request);
+      if (!session?.isAdmin) {
+        return Response.json({ error: "ステータスの直接変更は管理者だけができます" }, { status: 403 });
+      }
+      const target = body.status;
+      if (!STATUS_ORDER.includes(target)) {
+        return Response.json({ error: "変更先のステータスが正しくありません" }, { status: 400 });
+      }
+      const [cur] = await sql`SELECT status FROM projects WHERE id = ${id}`;
+      if (!cur) return Response.json({ error: "Project not found" }, { status: 404 });
+      if (cur.status === target) {
+        return Response.json({ message: "ステータスは変わっていません" });
+      }
+      const [updated] = await sql`
+        UPDATE projects SET status = ${target}, updated_at = NOW()
+        WHERE id = ${id}
+        RETURNING *
+      `;
+      await sql`
+        INSERT INTO project_activities (project_id, activity_type, description)
+        VALUES (${id}, 'status_update', ${`${session.name || "管理者"}がステータスを「${cur.status}」から「${target}」に直接変更しました（管理者の整理用。連携処理はなし）`})
+      `;
+      return Response.json({ message: `ステータスを「${target === "残金請求済" ? "完了" : target}」にしました`, project: updated });
+    }
 
     // 現在のプロジェクト情報を取得
     const project = await sql`

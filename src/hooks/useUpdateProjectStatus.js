@@ -11,6 +11,7 @@ export const useUpdateProjectStatus = () => {
       installationData = null,
       revenue = undefined,
       deliveryDate = undefined,
+      status = undefined, // action:"set"（管理者の直接変更）のときの変更先
     }) => {
       const response = await fetch(`/api/projects/${projectId}/status`, {
         method: "PUT",
@@ -23,6 +24,7 @@ export const useUpdateProjectStatus = () => {
           installationData,
           revenue,
           deliveryDate,
+          status,
         }),
       });
 

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { STATUS_STEPS as ALL_STEPS } from "@/utils/status";
 import { SP_STEPS } from "@/lib/prefixes";
 import { useUpdateProjectStatus } from "@/hooks/useUpdateProjectStatus";
@@ -21,6 +21,29 @@ export const StatusProgressBar = ({
   const [showDeliveryDateModal, setShowDeliveryDateModal] = useState(false);
   const [showRevertModal, setShowRevertModal] = useState(false);
   const [targetStatus, setTargetStatus] = useState("");
+  // 管理者（和田・梶原など）は、どの段階へも直接変えられる（過去案件の整理用）
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [setTarget, setSetTarget] = useState(null); // 直接変更の確認を出している変更先
+  useEffect(() => {
+    fetch("/api/auth/me")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((me) => setIsAdmin(!!me?.user?.isAdmin))
+      .catch(() => setIsAdmin(false));
+  }, []);
+  const labelOf = (key) => STATUS_STEPS.find((st) => st.key === key)?.label || key;
+  const handleDirectSet = async () => {
+    const target = setTarget;
+    setSetTarget(null);
+    setShowRevertModal(false);
+    setTargetStatus("");
+    try {
+      const result = await updateProjectStatus.mutateAsync({ projectId, action: "set", status: target });
+      if (result?.message) toast.success(result.message);
+      if (onUpdated) await onUpdated();
+    } catch (error) {
+      toast.error(error.message || "ステータスの変更に失敗しました");
+    }
+  };
 
   // SP（在庫の発注）は「手配中 → 検品完了」の2段階だけ
   const isSP = (project?.prefix || "").toUpperCase() === "SP";
@@ -60,6 +83,11 @@ export const StatusProgressBar = ({
     if (clickedIndex === currentIndex + 1) {
       await handleStatusAdvance();
       return;
+    }
+
+    // 管理者：2つ以上先をクリック → 直接変更の確認
+    if (isAdmin && clickedIndex > currentIndex + 1) {
+      setSetTarget(STATUS_STEPS[clickedIndex].key);
     }
   };
 
@@ -263,7 +291,8 @@ export const StatusProgressBar = ({
           const canRevert = (isCompleted || isCurrent) && !disabled;
           const canAdvance =
             isNext && !disabled && currentIndex < STATUS_STEPS.length - 1;
-          const isClickable = canRevert || canAdvance;
+          const canJump = isAdmin && !disabled && index > currentIndex + 1; // 管理者は飛ばして進められる
+          const isClickable = canRevert || canAdvance || canJump;
 
           // 色とスタイルの決定
           //   今ココ（現在）＝はっきり光る本来の色
@@ -302,7 +331,9 @@ export const StatusProgressBar = ({
                   isClickable ? () => handleStatusClick(index) : undefined
                 }
                 title={
-                  canAdvance
+                  canJump
+                    ? `「${step.label}」に直接変更（管理者）`
+                    : canAdvance
                     ? `次のステップ「${STATUS_STEPS[currentIndex + 1]?.label}」に進む`
                     : canRevert && isCurrent
                       ? `ステータス選択`
@@ -352,9 +383,28 @@ export const StatusProgressBar = ({
 
             <div className="mb-6">
               {targetStatus === currentStatus ? (
-                <p className="text-gray-600 mb-2">
-                  現在のステータスは「<strong>{targetStatus}</strong>」です。
-                </p>
+                <>
+                  <p className="text-gray-600 mb-2">
+                    現在のステータスは「<strong>{labelOf(targetStatus)}</strong>」です。
+                  </p>
+                  {isAdmin && (
+                    <div className="mt-4 pt-4 border-t border-gray-100">
+                      <p className="text-xs font-bold text-gray-500 mb-2">管理者：直接変更する</p>
+                      <div className="flex flex-wrap gap-2">
+                        {STATUS_STEPS.filter((st) => st.key !== currentStatus).map((st) => (
+                          <button
+                            key={st.key}
+                            type="button"
+                            onClick={() => setSetTarget(st.key)}
+                            className="px-3 py-1.5 rounded-full text-sm border border-gray-200 hover:border-gray-900 hover:bg-gray-900 hover:text-white transition-colors"
+                          >
+                            {st.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
               ) : (
                 <>
                   <p className="text-gray-600 mb-2">
@@ -388,6 +438,33 @@ export const StatusProgressBar = ({
                   {updateProjectStatus.isPending ? "処理中..." : "戻す"}
                 </button>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 管理者の直接変更：確認 */}
+      {setTarget && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4" onClick={() => setSetTarget(null)}>
+          <div className="bg-white rounded-lg p-6 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-lg font-semibold text-gray-700 mb-3">ステータスを直接変更（管理者）</h2>
+            <p className="text-gray-700 mb-2">
+              「<strong>{labelOf(currentStatus)}</strong>」→「<strong>{labelOf(setTarget)}</strong>」にします。
+            </p>
+            <p className="text-sm text-gray-500 mb-6">
+              段階を飛ばして変えます。Chatスペースの作成、支払ナビへの連携、請求書の作成はしません（過去案件の整理用）。履歴には残ります。
+            </p>
+            <div className="flex gap-3">
+              <button onClick={() => setSetTarget(null)} className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium">
+                キャンセル
+              </button>
+              <button
+                onClick={handleDirectSet}
+                disabled={updateProjectStatus.isPending}
+                className="flex-1 px-4 py-2 rounded-lg font-medium bg-gray-900 text-white hover:bg-black disabled:bg-gray-300"
+              >
+                変更する
+              </button>
             </div>
           </div>
         </div>
