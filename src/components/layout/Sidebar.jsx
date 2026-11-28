@@ -11,6 +11,8 @@ import {
   CalendarDays,
   CheckSquare,
   BookOpen,
+  UserCog,
+  MessagesSquare,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { createSecretUrl } from "@/utils/secretPath";
@@ -75,6 +77,21 @@ export const Sidebar = () => {
     { title: "製品ナビ", href: `${NAVI}/procurement-system/genba.html`, color: "#4f72a8", edge: "#334f7c", fg: "#ffffff", icon: BookOpen },
   ];
 
+  // 管理用の近道（和田・梶原だけ）
+  //   サーバー側でも管理者チェックがあるので、ここは「見せるかどうか」だけ
+  const ADMIN_SHORTCUT_CODES = ["A", "H"]; // A=和田 H=梶原
+  const [showAdmin, setShowAdmin] = useState(false);
+  useEffect(() => {
+    fetch("/api/auth/me")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((me) => setShowAdmin(!!me?.user?.isAdmin && ADMIN_SHORTCUT_CODES.includes(me.user.code)))
+      .catch(() => setShowAdmin(false));
+  }, []);
+  const adminItems = [
+    { title: "メンバー管理（管理者）", href: createSecretUrl("/staff-admin"), icon: UserCog },
+    { title: "Chatスペース自動作成の設定（管理者）", href: "/chat-setup", icon: MessagesSquare },
+  ];
+
   const handleNavigation = (href) => {
     window.location.href = href;
   };
@@ -117,6 +134,24 @@ export const Sidebar = () => {
         ))}
       </div>
 
+      {/* 管理用（和田・梶原だけ） */}
+      {showAdmin && (
+        <div className="mt-auto pt-4 border-t border-dashed border-gray-200 flex flex-col items-center gap-2">
+          {adminItems.map(({ title, href, icon: Icon }) => (
+            <a
+              key={href}
+              href={href}
+              title={title}
+              aria-label={title}
+              className={`grid place-items-center h-8 w-8 rounded-lg transition-colors ${
+                pathname.startsWith(href) ? "bg-gray-900 text-white" : "text-gray-400 hover:text-gray-800 hover:bg-gray-100"
+              }`}
+            >
+              <Icon className="h-4 w-4" />
+            </a>
+          ))}
+        </div>
+      )}
     </aside>
   );
 };
