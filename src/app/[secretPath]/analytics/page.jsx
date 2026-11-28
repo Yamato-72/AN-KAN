@@ -11,7 +11,9 @@ import {
   Tooltip,
   Bar,
 } from "recharts";
-import { ArrowLeft, TrendingUp, Users, Building, CalendarRange } from "lucide-react";
+import { ArrowLeft, TrendingUp, Users, Building, CalendarRange, X, ChevronRight } from "lucide-react";
+import { formatProjectNumber } from "@/lib/prefixes";
+import { getStatusText } from "@/utils/status";
 
 // ============================================================
 // 経営分析ページ（/analytics）
@@ -55,6 +57,8 @@ export default function AnalyticsPage() {
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [periodFilter, setPeriodFilter] = useState(null); // 対象期（null=最新期を自動選択）
+  const [staffOpen, setStaffOpen] = useState(null); // 名前を押した担当者（その人の数字と案件一覧を出す）
+  const [staffSort, setStaffSort] = useState("rev"); // rev=売上順 / date=新しい順
 
   useEffect(() => {
     fetch("/api/projects?folder=active")
@@ -152,6 +156,27 @@ export default function AnalyticsPage() {
     });
     return arr;
   }, [scoped]);
+
+  // 担当者を押したとき：その人の案件（選択期）
+  const staffOf = (p) => p.assigned_team_member_name || "担当者なし";
+  const staffProjects = useMemo(() => {
+    if (!staffOpen) return [];
+    const dateOf = (p) => p.sales_date || p.delivery_date || p.inquiry_date || p.created_at || "";
+    return scoped
+      .filter((p) => staffOf(p) === staffOpen)
+      .sort((a, b) =>
+        staffSort === "rev" ? b._rev - a._rev : String(dateOf(b)).localeCompare(String(dateOf(a))),
+      );
+  }, [scoped, staffOpen, staffSort]);
+  const staffTotal = staffProjects.reduce((a, p) => a + p._rev, 0);
+  const staffPaid = staffProjects.filter((p) => p._rev > 0).length;
+  const staffClients = new Set(staffProjects.map((p) => p.client_name).filter(Boolean)).size;
+  useEffect(() => {
+    if (!staffOpen) return;
+    const onKey = (e) => e.key === "Escape" && setStaffOpen(null);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [staffOpen]);
 
   const scopedTotal = scoped.reduce((a, p) => a + p._rev, 0);
   const maxClientRev = byClient[0]?.revenue || 1;
@@ -279,15 +304,25 @@ export default function AnalyticsPage() {
             <h2 className="text-sm font-bold text-gray-700 flex items-center gap-2 mb-4">
               <Users className="h-4 w-4 text-gray-400" />
               担当者別売上（{scopeLabel}）
+              <span className="ml-auto text-[11px] font-normal text-gray-400">名前を押すと案件一覧</span>
             </h2>
             {byStaff.length === 0 ? (
               <p className="text-sm text-gray-400">売上データがありません</p>
             ) : (
               <div className="space-y-2.5">
                 {byStaff.map((s) => (
-                  <div key={s.name}>
+                  <button
+                    type="button"
+                    key={s.name}
+                    onClick={() => setStaffOpen(s.name)}
+                    className="group block w-full text-left -mx-2 px-2 py-1 rounded-lg hover:bg-emerald-50 transition-colors"
+                    title={`${s.name}の案件一覧を見る`}
+                  >
                     <div className="flex justify-between text-xs mb-0.5">
-                      <span className="text-gray-700 truncate mr-2">{s.name}</span>
+                      <span className="text-gray-700 truncate mr-2 flex items-center gap-1 group-hover:text-emerald-700 group-hover:font-semibold">
+                        {s.name}
+                        <ChevronRight className="h-3 w-3 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
+                      </span>
                       <span className="text-gray-900 font-semibold whitespace-nowrap tabular-nums">
                         {man(s.revenue)}
                         <span className="text-gray-400 font-normal ml-1">{s.count}件</span>
@@ -299,7 +334,7 @@ export default function AnalyticsPage() {
                         style={{ width: `${(s.revenue / maxStaffRev) * 100}%` }}
                       />
                     </div>
-                  </div>
+                  </button>
                 ))}
               </div>
             )}
@@ -328,6 +363,68 @@ export default function AnalyticsPage() {
           </p>
         </div>
       </div>
+      {/* 担当者の案件一覧（右から出るパネル） */}
+      {staffOpen && (
+        <div className="fixed inset-0 z-50 flex justify-end" role="dialog" aria-modal="true" aria-label={`${staffOpen}の案件`}>
+          <div className="absolute inset-0 bg-black/30 animate-[fadeIn_.2s_ease]" onClick={() => setStaffOpen(null)} />
+          <div className="relative h-full w-full max-w-md bg-white shadow-2xl flex flex-col animate-[slideIn_.28s_cubic-bezier(.2,.8,.2,1)]">
+            <div className="px-5 pt-5 pb-4 border-b border-gray-100">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-xs text-gray-400">{scopeLabel}・担当者</p>
+                  <h3 className="text-lg font-bold text-gray-900">{staffOpen}</h3>
+                </div>
+                <button type="button" onClick={() => setStaffOpen(null)} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100" title="閉じる（Esc）">
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              <div className="grid grid-cols-3 gap-2 mt-4">
+                <div className="bg-emerald-50 rounded-lg p-2.5">
+                  <p className="text-[11px] text-emerald-700">売上</p>
+                  <p className="text-base font-bold text-gray-900 tabular-nums">{man(staffTotal)}</p>
+                  <p className="text-[11px] text-gray-500 tabular-nums">全体の{scopedTotal ? Math.round((staffTotal / scopedTotal) * 100) : 0}%</p>
+                </div>
+                <div className="bg-gray-50 rounded-lg p-2.5">
+                  <p className="text-[11px] text-gray-500">案件数</p>
+                  <p className="text-base font-bold text-gray-900 tabular-nums">{staffProjects.length}件</p>
+                  <p className="text-[11px] text-gray-500 tabular-nums">顧客 {staffClients}社</p>
+                </div>
+                <div className="bg-gray-50 rounded-lg p-2.5">
+                  <p className="text-[11px] text-gray-500">平均単価</p>
+                  <p className="text-base font-bold text-gray-900 tabular-nums">{staffPaid ? man(staffTotal / staffPaid) : "-"}</p>
+                  <p className="text-[11px] text-gray-500">売上ありの案件で</p>
+                </div>
+              </div>
+              <div className="flex gap-1 mt-4 text-xs">
+                {[["rev", "売上順"], ["date", "新しい順"]].map(([k, l]) => (
+                  <button key={k} type="button" onClick={() => setStaffSort(k)}
+                    className={`px-2.5 py-1 rounded-full transition-colors ${staffSort === k ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>
+                    {l}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              {staffProjects.map((p, i) => (
+                <a key={p.id} href={`/${params.secretPath}/projects/${p.id}`} target="_blank" rel="noopener noreferrer"
+                  className="flex items-center gap-3 px-5 py-3 border-b border-gray-50 hover:bg-gray-50 transition-colors"
+                  style={{ animation: `fadeUp .3s ease both`, animationDelay: `${Math.min(i, 15) * 20}ms` }}>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[11px] text-gray-400 tabular-nums">
+                      {p.ad_number ? formatProjectNumber(p.prefix, p.ad_number) : "番号なし"}
+                      <span className="ml-2">{getStatusText(p.status, p.prefix)}</span>
+                    </p>
+                    <p className="text-sm font-semibold text-gray-800 truncate">{p.project_name || "（案件名なし）"}</p>
+                    <p className="text-xs text-gray-500 truncate">{p.client_name || "（取引先未設定）"}</p>
+                  </div>
+                  <p className={`text-sm font-bold tabular-nums whitespace-nowrap ${p._rev ? "text-gray-900" : "text-gray-300"}`}>{p._rev ? man(p._rev) : "¥0"}</p>
+                </a>
+              ))}
+            </div>
+          </div>
+          <style>{`@keyframes slideIn{from{transform:translateX(100%)}}@keyframes fadeIn{from{opacity:0}}@keyframes fadeUp{from{opacity:0;transform:translateY(6px)}}@media (prefers-reduced-motion:reduce){*{animation:none!important}}`}</style>
+        </div>
+      )}
     </div>
   );
 }
