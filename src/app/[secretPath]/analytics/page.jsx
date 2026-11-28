@@ -48,12 +48,17 @@ const FISCAL_MONTH_LABELS = ["7月","8月","9月","10月","11月","12月","1月"
 //   商談中＝リード・打ち合わせ中（まだ受注していない）
 //   仕掛り＝受注済み・手配中（受注したが、まだ完了していない）
 //   完了　＝残金請求済
+//   トラブル対応＝TS（修理・トラブル対応。営業の件数には入れず別枠で数える）
+//   SP（在庫の発注）は売上ではないので、売上分析には入れない
+const prefixOf = (p) => String(p.prefix || "AD").toUpperCase();
 const stageOf = (p) => {
+  if (prefixOf(p) === "TS") return "トラブル対応";
   if (p.status === "残金請求済") return "完了";
   if (p.status === "リード" || p.status === "打ち合わせ中") return "商談中";
   return "仕掛り";
 };
-const STAGES = ["完了", "仕掛り", "商談中"];
+const STAGES = ["完了", "仕掛り", "商談中", "トラブル対応"];
+const isOrdered = (p) => p._stage === "完了" || p._stage === "仕掛り"; // 営業で受注した案件
 
 const yen = (n) => "¥" + Math.round(n).toLocaleString();
 const man = (n) => {
@@ -90,7 +95,7 @@ export default function AnalyticsPage() {
           _fm: fiscalMonthOf(p),
           _stage: stageOf(p),
         }))
-        .filter((p) => p._period && p._period > 0),
+        .filter((p) => p._period && p._period > 0 && prefixOf(p) !== "SP"),
     [projects],
   );
 
@@ -107,7 +112,7 @@ export default function AnalyticsPage() {
     revProjects.forEach((p) => {
       if (!map[p._period]) map[p._period] = { revenue: 0, count: 0 };
       map[p._period].revenue += p._rev;
-      if (p._stage !== "商談中") map[p._period].count += 1; // 件数は受注した案件だけ
+      if (isOrdered(p)) map[p._period].count += 1; // 件数は営業で受注した案件だけ
     });
     return availablePeriods.map((n) => ({
       name: `第${n}期`,
@@ -134,7 +139,7 @@ export default function AnalyticsPage() {
       const name = p.client_name || "（取引先未設定）";
       if (!map[name]) map[name] = { revenue: 0, count: 0 };
       map[name].revenue += p._rev;
-      if (p._stage !== "商談中") map[name].count += 1; // 件数は受注した案件（完了＋仕掛り）だけ
+      if (isOrdered(p)) map[name].count += 1; // 件数は営業で受注した案件（完了＋仕掛り）だけ
     });
     return Object.entries(map)
       .map(([name, v]) => ({ name, ...v }))
@@ -149,10 +154,11 @@ export default function AnalyticsPage() {
       const name = p.assigned_team_member_name
         ? `${p.assigned_team_member_name}`
         : "担当者なし";
-      if (!map[name]) map[name] = { revenue: 0, count: 0, talks: 0 };
+      if (!map[name]) map[name] = { revenue: 0, count: 0, talks: 0, ts: 0 };
       map[name].revenue += p._rev;
       if (p._stage === "商談中") map[name].talks += 1;
-      else map[name].count += 1; // 件数は受注した案件（完了＋仕掛り）だけ
+      else if (p._stage === "トラブル対応") map[name].ts += 1;
+      else map[name].count += 1; // 件数は営業で受注した案件（完了＋仕掛り）だけ
     });
     return Object.entries(map)
       .map(([name, v]) => ({ name, ...v }))
@@ -183,7 +189,9 @@ export default function AnalyticsPage() {
   }, [scoped, staffOpen, staffSort]);
   const staffTotal = staffProjects.reduce((a, p) => a + p._rev, 0);
   const staffPaid = staffProjects.filter((p) => p._rev > 0).length;
-  const staffOrdered = staffProjects.filter((p) => p._stage !== "商談中").length;
+  const staffOrdered = staffProjects.filter(isOrdered).length;
+  const staffTs = staffProjects.filter((p) => p._stage === "トラブル対応");
+  const staffSalesPaid = staffProjects.filter((p) => isOrdered(p) && p._rev > 0);
   const staffClients = new Set(staffProjects.map((p) => p.client_name).filter(Boolean)).size;
   useEffect(() => {
     if (!staffOpen) return;
@@ -194,7 +202,10 @@ export default function AnalyticsPage() {
 
   const scopedTotal = scoped.reduce((a, p) => a + p._rev, 0);
   const stageCount = (list, st) => list.filter((p) => p._stage === st).length;
-  const scopedOrdered = scoped.length - stageCount(scoped, "商談中");
+  const scopedOrdered = scoped.filter(isOrdered).length;
+  const scopedTs = scoped.filter((p) => p._stage === "トラブル対応");
+  const scopedTsRev = scopedTs.reduce((a, p) => a + p._rev, 0);
+  const salesPaid = scoped.filter((p) => isOrdered(p) && p._rev > 0);
   const maxClientRev = byClient[0]?.revenue || 1;
   const maxStaffRev = byStaff[0]?.revenue || 1;
   const scopeLabel = effectivePeriod ? `第${effectivePeriod}期` : "-";
@@ -232,14 +243,15 @@ export default function AnalyticsPage() {
           </select>
         </div>
         <p className="text-xs text-gray-400 mb-5">
-          売上は支払ナビ（販売案件売上シート）の金額。シートに無い過去の案件は、取り込み時の金額。期は売上の納品日で判定。失注・保留は除外。件数は受注した案件だけ（完了＋仕掛り＝受注済み・手配中）。商談中（リード・打ち合わせ中）は件数に入れず別に表示。
+          売上は支払ナビ（販売案件売上シート）の金額。シートに無い過去の案件は、取り込み時の金額。期は売上の納品日で判定。失注・保留は除外。件数は受注した案件だけ（完了＋仕掛り＝受注済み・手配中）。商談中（リード・打ち合わせ中）とトラブル対応（TS）は件数に入れず別に表示。SP（在庫の発注）は含めない。
         </p>
 
         {/* サマリー */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 mb-5">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-5">
           <div className="bg-white border border-gray-200 rounded-xl p-4">
             <p className="text-xs text-gray-500">{scopeLabel}の売上合計</p>
             <p className="text-xl font-bold text-gray-900 tabular-nums">{man(scopedTotal)}</p>
+            {scopedTsRev > 0 && <p className="text-[11px] text-gray-400 tabular-nums mt-0.5">うちトラブル対応 {man(scopedTsRev)}</p>}
           </div>
           <div className="bg-white border border-gray-200 rounded-xl p-4">
             <p className="text-xs text-gray-500">{scopeLabel}の受注件数</p>
@@ -250,12 +262,18 @@ export default function AnalyticsPage() {
               <span className="ml-2">商談中 {stageCount(scoped, "商談中")}</span>
             </p>
           </div>
-          <div className="bg-white border border-gray-200 rounded-xl p-4 col-span-2 sm:col-span-1">
+          <div className="bg-white border border-gray-200 rounded-xl p-4">
             <p className="text-xs text-gray-500">{scopeLabel}の平均案件単価</p>
             <p className="text-xl font-bold text-gray-900 tabular-nums">
-              {scoped.filter((p) => p._rev > 0).length
-                ? man(scopedTotal / scoped.filter((p) => p._rev > 0).length)
-                : "-"}
+              {salesPaid.length ? man(salesPaid.reduce((a, p) => a + p._rev, 0) / salesPaid.length) : "-"}
+            </p>
+            <p className="text-[11px] text-gray-400 mt-0.5">営業の案件で</p>
+          </div>
+          <div className="bg-white border border-gray-200 rounded-xl p-4">
+            <p className="text-xs text-gray-500">{scopeLabel}のトラブル対応</p>
+            <p className="text-xl font-bold text-gray-900 tabular-nums">{scopedTs.length}件</p>
+            <p className="text-[11px] text-gray-400 tabular-nums mt-0.5">
+              完了 {scopedTs.filter((p) => p.status === "残金請求済").length}・有償 {scopedTs.filter((p) => p._rev > 0).length}件
             </p>
           </div>
         </div>
@@ -348,6 +366,7 @@ export default function AnalyticsPage() {
                         {man(s.revenue)}
                         <span className="text-gray-400 font-normal ml-1">{s.count}件</span>
                         {s.talks > 0 && <span className="text-gray-300 font-normal ml-1">商談中{s.talks}</span>}
+                        {s.ts > 0 && <span className="text-orange-300 font-normal ml-1">TS{s.ts}</span>}
                       </span>
                     </div>
                     <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
@@ -409,12 +428,12 @@ export default function AnalyticsPage() {
                 <div className="bg-gray-50 rounded-lg p-2.5">
                   <p className="text-[11px] text-gray-500">受注件数</p>
                   <p className="text-base font-bold text-gray-900 tabular-nums">{staffOrdered}件</p>
-                  <p className="text-[11px] text-gray-500 tabular-nums">商談中 {staffProjects.length - staffOrdered}件</p>
+                  <p className="text-[11px] text-gray-500 tabular-nums">商談中 {stageCount(staffProjects, "商談中")}・TS {staffTs.length}</p>
                 </div>
                 <div className="bg-gray-50 rounded-lg p-2.5">
                   <p className="text-[11px] text-gray-500">平均単価</p>
-                  <p className="text-base font-bold text-gray-900 tabular-nums">{staffPaid ? man(staffTotal / staffPaid) : "-"}</p>
-                  <p className="text-[11px] text-gray-500">売上ありの案件で</p>
+                  <p className="text-base font-bold text-gray-900 tabular-nums">{staffSalesPaid.length ? man(staffSalesPaid.reduce((a, p) => a + p._rev, 0) / staffSalesPaid.length) : "-"}</p>
+                  <p className="text-[11px] text-gray-500">営業の案件で</p>
                 </div>
               </div>
               <div className="flex gap-1 mt-4 text-xs">
@@ -433,7 +452,7 @@ export default function AnalyticsPage() {
                 const sum = list.reduce((a, p) => a + p._rev, 0);
                 return (
                   <div key={st}>
-                    <div className={`sticky top-0 z-10 flex items-center justify-between px-5 py-2 text-xs font-bold border-b border-gray-100 ${st === "完了" ? "bg-emerald-50 text-emerald-800" : st === "仕掛り" ? "bg-amber-50 text-amber-800" : "bg-gray-50 text-gray-500"}`}>
+                    <div className={`sticky top-0 z-10 flex items-center justify-between px-5 py-2 text-xs font-bold border-b border-gray-100 ${st === "完了" ? "bg-emerald-50 text-emerald-800" : st === "仕掛り" ? "bg-amber-50 text-amber-800" : st === "トラブル対応" ? "bg-orange-50 text-orange-800" : "bg-gray-50 text-gray-500"}`}>
                       <span>{st}<span className="ml-1.5 font-normal">{list.length}件</span></span>
                       {st !== "商談中" && <span className="tabular-nums">{man(sum)}</span>}
                     </div>
