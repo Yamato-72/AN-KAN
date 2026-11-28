@@ -412,7 +412,7 @@ export default function AnalyticsPage() {
                   <div className="min-w-0 flex-1">
                     <p className="text-[11px] text-gray-400 tabular-nums">
                       {p.ad_number ? formatProjectNumber(p.prefix, p.ad_number) : "番号なし"}
-                      <span className="ml-2">{getStatusText(p.status, p.prefix)}</span>
+                      <span className="ml-2">{p.status === "残金請求済" && String(p.prefix || "").toUpperCase() !== "SP" ? "完了" : getStatusText(p.status, p.prefix)}</span>
                     </p>
                     <p className="text-sm font-semibold text-gray-800 truncate">{p.project_name || "（案件名なし）"}</p>
                     <p className="text-xs text-gray-500 truncate">{p.client_name || "（取引先未設定）"}</p>
