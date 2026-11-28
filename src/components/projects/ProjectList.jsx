@@ -21,7 +21,7 @@ export const ProjectList = ({
   error,
   onDelete,
   showDeleteButton = false,
-  showGfiFlag = true,
+  showGfiFlag = false, // GFIフラグは使わなくなったので出さない（2026-11-28）
   isGfiMode = false,
 }) => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);

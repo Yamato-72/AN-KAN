@@ -24,7 +24,7 @@ export const ProjectCard = ({
   project,
   onDelete,
   showDeleteButton = false,
-  showGfiFlag = true, // 新しいプロパティを追加
+  showGfiFlag = false, // GFIフラグは使わなくなったので出さない（2026-11-28）
   isGfiMode = false, // GFIモードかどうかを示すプロパティを追加
 }) => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);

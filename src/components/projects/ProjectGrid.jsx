@@ -6,7 +6,7 @@ export const ProjectGrid = ({
   error,
   onDelete,
   showDeleteButton = false,
-  showGfiFlag = true,
+  showGfiFlag = false, // GFIフラグは使わなくなったので出さない（2026-11-28）
   isGfiMode = false,
 }) => {
   if (isLoading) {
